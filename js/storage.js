@@ -27,15 +27,26 @@ const Storage = {
     // Error Book Specifics
     addError(question, userAnswer) {
         const errors = this.load(this.KEYS.ERROR_BOOK, []);
+        console.log('[Storage.addError] 当前错题本数量:', errors.length);
+
         // Check if already exists (by question text)
         const exists = errors.some(e => e.question === question.question);
         if (!exists) {
-            errors.push({
+            const newError = {
                 ...question,
                 userAnswer,
                 timestamp: new Date().toISOString()
-            });
+            };
+            errors.push(newError);
             this.save(this.KEYS.ERROR_BOOK, errors);
+            console.log('[Storage.addError] 新增错题:', {
+                question: question.question.substring(0, 30) + '...',
+                userAnswer,
+                type: question.type,
+                totalErrors: errors.length
+            });
+        } else {
+            console.log('[Storage.addError] 错题已存在,跳过:', question.question.substring(0, 30) + '...');
         }
     },
 

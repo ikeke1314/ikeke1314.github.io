@@ -258,26 +258,45 @@ select {
     border-color: #dc3545;
 }
 
-.option-label {
-    font-weight: bold;
-    min-width: 25px;
-}
-
+/* Exam Footer - Navigation Buttons */
 .exam-footer {
-    display: flex;
-    justify-content: space-between;
+    position: sticky;
+    bottom: 0;
+    background: white;
+    padding: 15px 0;
     margin-top: 20px;
-    padding-top: 10px;
     border-top: 1px solid #eee;
+    display: flex;
+    gap: 15px;
+    justify-content: space-between;
 }
 
 .nav-btn {
-    background-color: #f1f3f5;
+    flex: 1;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
     border: none;
-    padding: 10px 20px;
-    border-radius: 20px;
-    color: var(--text-color);
+    padding: 16px 24px;
+    border-radius: 12px;
+    color: white;
+    font-size: 1.1rem;
+    font-weight: 600;
     cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+    min-height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.nav-btn:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
+}
+
+.nav-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 /* Result Screen */
@@ -487,4 +506,24 @@ select {
 .modal-actions .btn {
     margin-top: 0;
     flex: 1;
+}
+
+.form-control {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: inherit;
+    resize: vertical;
+}
+
+.status-text {
+    margin-top: 10px;
+    font-size: 0.9rem;
+    color: var(--text-light);
+}
+
+.back-btn {
+    font-size: 1.2rem;
 }

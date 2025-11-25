@@ -290,6 +290,9 @@ const App = {
             this.currentQuestionIndex = 0;
             this.examManager.userAnswers = {};
         }
+        // Sync questions to examManager so submitAnswer works
+        this.examManager.currentQuestions = this.currentExamQuestions;
+
         this.mode = 'practice';
         this.showScreen('exam-screen');
         document.getElementById('btn-submit-exam').style.display = 'none';
@@ -317,7 +320,8 @@ const App = {
         const currentAns = this.examManager.userAnswers[this.currentQuestionIndex] || '';
         const isAnswered = !!currentAns;
         if (q.type === '单选题' || q.type === '多选题' || q.type === '判断题') {
-            const options = q.type === '判断题' ? { 'A': '正确', 'B': '错误' } : q.options;
+            // Use actual options from question bank for all question types
+            const options = q.options;
             Object.entries(options).forEach(([key, val]) => {
                 const el = document.createElement('div');
                 el.className = 'option-item';
@@ -328,23 +332,64 @@ const App = {
                     if (currentAns === key) el.classList.add('selected');
                 }
                 // Answer Feedback (Both Exam and Practice Mode)
-                if (isAnswered) {
+                // For multi-choice, only show feedback after confirmation
+                const isMultiConfirmed = q.type === '多选题' && this.examManager.userAnswers[this.currentQuestionIndex + '_confirmed'];
+                const shouldShowFeedback = (q.type !== '多选题' && isAnswered) || isMultiConfirmed;
+
+                if (shouldShowFeedback) {
                     const correctAnswer = q.answer || '';
-                    const isCorrectOption = correctAnswer.includes(key);
-                    const isSelectedOption = currentAns.includes(key);
+                    let isCorrectOption = false;
+                    let isSelectedOption = false;
+
+                    if (q.type === '判断题') {
+                        // For 判断题, compare option value (√/×) with answer
+                        const optionValue = val; // val is the option text (√ or ×)
+                        isCorrectOption = correctAnswer === optionValue;
+                        isSelectedOption = currentAns === optionValue;
+                    } else {
+                        // For other types, compare option key (A/B/C/D)
+                        isCorrectOption = correctAnswer.includes(key);
+                        isSelectedOption = currentAns.includes(key);
+                    }
+
                     if (isCorrectOption) {
                         el.classList.add('correct');
                     } else if (isSelectedOption && !isCorrectOption) {
                         el.classList.add('wrong');
                     }
                 }
-                if (!isAnswered || q.type === '多选题') {
-                    const isMultiConfirmed = q.type === '多选题' && this.examManager.userAnswers[this.currentQuestionIndex + '_confirmed'];
-                    if (this.mode === 'practice' && (isMultiConfirmed || (q.type !== '多选题' && isAnswered))) {
-                        // disabled
+                // Click event binding logic
+                // Reuse isMultiConfirmed from above
+
+                // Determine if option should be clickable
+                let shouldDisableClick = false;
+                if (this.mode === 'exam') {
+                    // Exam mode: disable after answering (except multi-choice before confirmation)
+                    if (q.type === '多选题') {
+                        shouldDisableClick = isMultiConfirmed;
                     } else {
-                        el.addEventListener('click', () => this.selectOption(key, q.type));
+                        shouldDisableClick = isAnswered;
                     }
+                    console.log(`[DEBUG] Exam mode - type: ${q.type}, isAnswered: ${isAnswered}, shouldDisableClick: ${shouldDisableClick}`);
+                } else {
+                    // Practice mode: only disable multi-choice after confirmation
+                    shouldDisableClick = isMultiConfirmed;
+                    console.log(`[DEBUG] Practice mode - type: ${q.type}, isAnswered: ${isAnswered}, isMultiConfirmed: ${isMultiConfirmed}, shouldDisableClick: ${shouldDisableClick}`);
+                }
+
+                if (!shouldDisableClick) {
+                    // Add both click and touch events for mobile compatibility
+                    const handleSelect = () => {
+                        console.log(`[DEBUG] Option clicked: ${key}, type: ${q.type}, mode: ${this.mode}`);
+                        this.selectOption(key, q.type);
+                    };
+                    el.addEventListener('click', handleSelect);
+                    el.addEventListener('touchend', (e) => {
+                        e.preventDefault(); // Prevent double-firing with click
+                        handleSelect();
+                    });
+                } else {
+                    console.log(`[DEBUG] Click disabled for option ${key}`);
                 }
                 optionsContainer.appendChild(el);
             });
@@ -407,38 +452,84 @@ const App = {
                 optionsContainer.appendChild(textarea);
                 optionsContainer.appendChild(btn);
             } else {
+                // Exam mode: also add "查看答案" button
                 textarea.addEventListener('input', (e) => {
                     this.examManager.submitAnswer(this.currentQuestionIndex, e.target.value);
                 });
                 optionsContainer.appendChild(textarea);
+
+                // Add "查看答案" button for exam mode
+                const btn = document.createElement('button');
+                btn.className = 'btn btn-primary';
+                btn.innerText = '查看答案';
+                btn.style.marginTop = '10px';
+                btn.onclick = () => {
+                    const ansDiv = document.createElement('div');
+                    ansDiv.style.marginTop = '10px';
+                    ansDiv.style.padding = '10px';
+                    ansDiv.style.borderRadius = '8px';
+                    ansDiv.style.background = '#e6f4ea';
+                    ansDiv.style.color = '#1e8e3e';
+                    ansDiv.innerHTML = `<strong>参考答案:</strong><br>${q.answer}`;
+                    optionsContainer.appendChild(ansDiv);
+                    btn.remove();
+                };
+                optionsContainer.appendChild(btn);
             }
         }
     },
 
     selectOption(key, type) {
-        // Check if already answered (prevent re-answering)
-        if (type !== '多选题' && this.examManager.userAnswers[this.currentQuestionIndex]) {
-            return; // Already answered, cannot modify
-        }
-        if (type === '多选题' && this.examManager.userAnswers[this.currentQuestionIndex + '_confirmed']) {
-            return; // Multi-choice confirmed, cannot modify
+        console.log(`[DEBUG] selectOption called: key=${key}, type=${type}, mode=${this.mode}, questionIndex=${this.currentQuestionIndex}`);
+
+        // Check if already answered (prevent re-answering in exam mode)
+        if (this.mode === 'exam') {
+            if (type !== '多选题' && this.examManager.userAnswers[this.currentQuestionIndex]) {
+                console.log('[DEBUG] Exam mode: already answered, returning');
+                return; // Already answered, cannot modify
+            }
+            if (type === '多选题' && this.examManager.userAnswers[this.currentQuestionIndex + '_confirmed']) {
+                console.log('[DEBUG] Exam mode: multi-choice confirmed, returning');
+                return; // Multi-choice confirmed, cannot modify
+            }
         }
 
         let currentAns = this.examManager.userAnswers[this.currentQuestionIndex] || '';
+        const q = this.currentExamQuestions[this.currentQuestionIndex];
 
         if (type === '单选题' || type === '判断题') {
+            // For 判断题, convert option key to option value for comparison
+            let answerToSubmit = key;
+            let answerToCompare = key;
+
+            if (type === '判断题' && q.options && q.options[key]) {
+                // Submit the option value (√ or ×) instead of the key (A or B)
+                answerToSubmit = q.options[key];
+                answerToCompare = q.options[key];
+                console.log(`[DEBUG] 判断题: key=${key} → value=${answerToSubmit}`);
+            }
+
             // Submit answer
-            this.examManager.submitAnswer(this.currentQuestionIndex, key);
+            console.log(`[DEBUG] Submitting answer: ${answerToSubmit}`);
+            this.examManager.submitAnswer(this.currentQuestionIndex, answerToSubmit);
 
             // Immediately re-render to show feedback
+            console.log('[DEBUG] Re-rendering question to show feedback');
             this.renderQuestion();
 
-            // Auto-jump after answering (both exam and practice mode, both correct and wrong)
-            setTimeout(() => {
-                if (this.currentQuestionIndex < this.currentExamQuestions.length - 1) {
-                    this.navQuestion(1);
-                }
-            }, 800);
+            // Auto-jump logic: only for CORRECT answers
+            const isCorrect = answerToCompare === q.answer;
+            console.log(`[DEBUG] Answer check: submitted=${answerToCompare}, correct=${q.answer}, isCorrect=${isCorrect}`);
+
+            if (isCorrect) {
+                // 答对:0.5秒后自动跳转下一题
+                setTimeout(() => {
+                    if (this.currentQuestionIndex < this.currentExamQuestions.length - 1) {
+                        this.navQuestion(1);
+                    }
+                }, 500);
+            }
+            // 答错:不自动跳转,停留在当前题让用户查看反馈
         } else if (type === '多选题') {
             // Toggle selection for multi-choice
             let ansArr = currentAns ? currentAns.split('').sort() : [];
@@ -479,8 +570,19 @@ const App = {
     },
 
     finishExam() {
+        console.log('[finishExam] 考试结束,开始计算成绩');
+        console.log('[finishExam] 答题情况:', this.examManager.userAnswers);
+
         clearInterval(this.timerInterval);
         const result = this.examManager.calculateResult();
+
+        console.log('[finishExam] 成绩计算完成:', {
+            totalScore: result.totalScore,
+            maxScore: result.maxScore,
+            passed: result.passed,
+            errorCount: result.details.filter(d => !d.isCorrect).length
+        });
+
         document.getElementById('result-score').innerText = result.totalScore;
         document.getElementById('result-status').innerText = result.passed ? '恭喜通过' : '未通过';
         document.getElementById('result-status').style.color = result.passed ? 'green' : 'red';
@@ -490,6 +592,8 @@ const App = {
         document.getElementById('result-time').innerText = `${um}:${us}`;
         const errorCount = result.details.filter(d => !d.isCorrect).length;
         document.getElementById('result-errors').innerText = errorCount;
+
+        console.log('[finishExam] 显示结果页面,错题数量:', errorCount);
         this.showScreen('result-screen');
     },
 

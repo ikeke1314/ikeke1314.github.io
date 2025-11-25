@@ -101,24 +101,44 @@ class ExamManager {
         let maxScore = 0;
         const results = [];
 
+        console.log('[calculateResult] 开始计算成绩,总题数:', this.currentQuestions.length);
+
         this.currentQuestions.forEach((q, i) => {
             const userAns = (this.userAnswers[i] || "").trim();
             const correctAns = (q.answer || "").trim();
             const points = this.scores[q.type] || 0;
 
             let isCorrect = false;
-            // Simple string comparison for now, can be enhanced
-            if (q.type === '简答题') {
+            
+            // 判断题特殊处理:将选项键转换为选项值进行比较
+            if (q.type === '判断题') {
+                // 如果题库答案是选项键(A/B),转换为选项值(√/×)
+                let normalizedCorrectAns = correctAns;
+                if (q.options && (correctAns === 'A' || correctAns === 'B')) {
+                    normalizedCorrectAns = q.options[correctAns];
+                    console.log(`[判断题] 题目${i+1}: 答案从选项键"${correctAns}"转换为选项值"${normalizedCorrectAns}"`);
+                }
+                isCorrect = userAns === normalizedCorrectAns;
+                console.log(`[判断题] 题目${i+1}: 用户答案="${userAns}", 正确答案="${normalizedCorrectAns}", 是否正确=${isCorrect}`);
+            } else if (q.type === '简答题') {
                 // Strict match for now as per Python code
                 isCorrect = userAns === correctAns;
+                console.log(`[简答题] 题目${i+1}: 用户答案="${userAns}", 正确答案="${correctAns}", 是否正确=${isCorrect}`);
             } else {
                 isCorrect = userAns === correctAns;
+                console.log(`[${q.type}] 题目${i+1}: 用户答案="${userAns}", 正确答案="${correctAns}", 是否正确=${isCorrect}`);
             }
 
             if (isCorrect) {
                 totalScore += points;
             } else {
-                // Add to error book
+                // 只有真正答错的才加入错题本
+                console.log(`[错题记录] 题目${i+1}答错,加入错题本:`, {
+                    question: q.question.substring(0, 30) + '...',
+                    userAnswer: userAns,
+                    correctAnswer: correctAns,
+                    type: q.type
+                });
                 Storage.addError(q, userAns);
             }
 
@@ -132,6 +152,8 @@ class ExamManager {
                 points: isCorrect ? points : 0
             });
         });
+
+        console.log('[calculateResult] 计算完成: 总分=', totalScore, '/', maxScore, ', 错误数=', results.filter(r => !r.isCorrect).length);
 
         return {
             totalScore,
