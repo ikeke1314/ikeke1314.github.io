@@ -1,0 +1,6 @@
+*.xlsx
+exam_bank/
+.DS_Store
+Thumbs.db
+*.tmp
+*.log

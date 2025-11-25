@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>技能士理论考核模拟系统</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- SheetJS for Excel parsing -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+</head>
+
+<body>
+    <div id="app">
+        <!-- Home Screen -->
+        <div id="home-screen" class="screen active">
+            <header class="app-header">
+                <h1>技能士理论考核</h1>
+                <p class="subtitle">模拟考试 & 专项练习</p>
+            </header>
+
+            <div class="card">
+                <h2>📚 题库加载</h2>
+                <div class="file-upload-container">
+                    <input type="file" id="file-input" accept=".xlsx" hidden>
+                    <button id="btn-load-file" class="btn btn-outline">📂 加载自定义题库</button>
+                    <p id="file-status" class="status-text">未加载题库</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>📝 模拟考试</h2>
+                <div class="form-group">
+                    <label>选择等级</label>
+                    <select id="exam-level-select" disabled>
+                        <option value="">请先加载题库</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>选择类别</label>
+                    <select id="exam-category-select" disabled>
+                        <option value="">全部</option>
+                    </select>
+                </div>
+                <div id="exam-rules" class="rules-text"></div>
+                <button id="btn-start-exam" class="btn btn-primary" disabled>开始模拟考试</button>
+            </div>
+
+            <div class="card">
+                <h2>🎯 专项练习</h2>
+                <button id="btn-practice-mode" class="btn btn-secondary" disabled>进入练习模式</button>
+            </div>
+
+            <div class="card">
+                <h2>📒 我的错题本</h2>
+                <button id="btn-error-book" class="btn btn-outline">查看错题</button>
+            </div>
+        </div>
+
+        <!-- Sheet Selection Modal -->
+        <div id="sheet-modal" class="modal hidden">
+            <div class="modal-content">
+                <h3>选择要加载的题库 (Sheet)</h3>
+                <div id="sheet-list" class="checkbox-group scrollable-list">
+                    <!-- Checkboxes injected here -->
+                </div>
+                <div class="modal-actions">
+                    <button id="btn-cancel-sheet" class="btn btn-outline">取消</button>
+                    <button id="btn-confirm-sheet" class="btn btn-primary">确定加载</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Exam Screen -->
+        <div id="exam-screen" class="screen">
+            <header class="exam-header">
+                <button id="btn-quit-exam" class="icon-btn back-btn">❮ 返回</button>
+                <div class="timer" id="exam-timer">45:00</div>
+                <button id="btn-submit-exam" class="text-btn">交卷</button>
+            </header>
+
+            <div class="question-container">
+                <div class="question-info">
+                    <span id="q-type" class="badge">单选题</span>
+                    <span id="q-index">1/100</span>
+                </div>
+                <div class="question-content">
+                    <p id="q-text">题目加载中...</p>
+                    <button id="btn-read-question" class="btn-icon-text">🔊 读题</button>
+                </div>
+                <div id="q-options" class="options-list">
+                    <!-- Options will be injected here -->
+                </div>
+            </div>
+
+            <div class="exam-footer">
+                <button id="btn-prev-q" class="nav-btn">上一题</button>
+                <button id="btn-next-q" class="nav-btn">下一题</button>
+            </div>
+        </div>
+
+        <!-- Result Screen -->
+        <div id="result-screen" class="screen">
+            <div class="result-card">
+                <h2 id="result-title">考试结束</h2>
+                <div class="score-circle">
+                    <span id="result-score">0</span>
+                    <span class="total">/100</span>
+                </div>
+                <p id="result-status">未通过</p>
+                <div class="result-details">
+                    <div class="detail-item">
+                        <span>用时</span>
+                        <span id="result-time">00:00</span>
+                    </div>
+                    <div class="detail-item">
+                        <span>错题</span>
+                        <span id="result-errors">0</span>
+                    </div>
+                </div>
+                <button id="btn-home" class="btn btn-primary">返回首页</button>
+                <button id="btn-review-errors" class="btn btn-outline">查看错题</button>
+            </div>
+        </div>
+
+        <!-- Practice Screen -->
+        <div id="practice-screen" class="screen">
+            <header class="app-header">
+                <button id="btn-quit-practice" class="icon-btn back-btn">❮ 返回</button>
+                <h1>专项练习</h1>
+            </header>
+            <div class="card">
+                <h3>选择等级 (可多选)</h3>
+                <div id="practice-level-checks" class="checkbox-group">
+                    <!-- Checkboxes injected here -->
+                </div>
+            </div>
+            <div class="card">
+                <h3>选择类别</h3>
+                <div class="form-group">
+                    <select id="practice-category-select">
+                        <option value="">全部</option>
+                    </select>
+                </div>
+            </div>
+            <div class="card">
+                <h3>选择题型</h3>
+                <div class="grid-buttons">
+                    <button class="btn-tile" data-type="单选题">
+                        <span class="tile-title">单选题</span>
+                        <span class="tile-count" id="count-single">0</span>
+                    </button>
+                    <button class="btn-tile" data-type="多选题">
+                        <span class="tile-title">多选题</span>
+                        <span class="tile-count" id="count-multi">0</span>
+                    </button>
+                    <button class="btn-tile" data-type="判断题">
+                        <span class="tile-title">判断题</span>
+                        <span class="tile-count" id="count-judge">0</span>
+                    </button>
+                    <button class="btn-tile" data-type="简答题">
+                        <span class="tile-title">简答题</span>
+                        <span class="tile-count" id="count-short">0</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Book Screen -->
+        <div id="error-screen" class="screen">
+            <header class="app-header">
+                <button id="btn-quit-error" class="icon-btn">‹</button>
+                <h1>错题本</h1>
+                <button id="btn-clear-error" class="text-btn" style="color: var(--danger-color)">清空</button>
+            </header>
+            <div id="error-list" class="error-list-container">
+                <!-- Error items injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/storage.js"></script>
+    <script src="js/excel_loader.js"></script>
+    <script src="js/exam_core.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>
