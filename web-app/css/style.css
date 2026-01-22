@@ -224,6 +224,8 @@ select {
     font-size: 1.1rem;
     font-weight: 500;
     margin-bottom: 20px;
+    line-height: 1.7;
+    color: var(--text-color);
 }
 
 .options-list {
@@ -242,6 +244,17 @@ select {
     gap: 10px;
     transition: background 0.2s;
     font-size: 18px;
+}
+
+.option-label {
+    font-weight: 600;
+    color: var(--primary-color);
+    min-width: 24px;
+}
+
+.option-text {
+    flex: 1;
+    line-height: 1.6;
 }
 
 .option-item.selected {
@@ -409,45 +422,102 @@ select {
 }
 
 /* Error Book */
+.error-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    color: var(--text-light);
+    margin-bottom: 4px;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
 .error-list-container {
     display: flex;
     flex-direction: column;
     gap: 15px;
+    padding-bottom: 20px;
 }
 
 .error-card {
     background: white;
-    padding: 15px;
+    padding: 18px;
     border-radius: 12px;
     box-shadow: var(--shadow);
     border-left: 4px solid var(--danger-color);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.error-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
 }
 
 .error-card .q-text {
-    font-weight: bold;
-    margin-bottom: 10px;
+    font-weight: 500;
+    font-size: 1.05rem;
+    margin-bottom: 12px;
+    line-height: 1.6;
+    color: var(--text-color);
 }
 
 .error-card .meta {
     font-size: 0.85rem;
     color: var(--text-light);
-    margin-bottom: 5px;
+    margin-bottom: 10px;
     display: flex;
     justify-content: space-between;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.error-card .options {
+    background: #f8f9fa;
+    padding: 10px;
+    border-radius: 6px;
+    margin: 10px 0;
+    font-size: 0.95rem;
+}
+
+.error-card .options div {
+    padding: 4px 0;
+    color: #555;
 }
 
 .error-card .ans-row {
-    font-size: 0.9rem;
-    margin-top: 5px;
+    font-size: 0.95rem;
+    margin-top: 8px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: #f8f9fa;
 }
 
 .error-card .wrong-ans {
     color: var(--danger-color);
+    font-weight: 600;
 }
 
 .error-card .correct-ans {
     color: var(--secondary-color);
-    font-weight: bold;
+    font-weight: 600;
 }
 
 /* Modal */

@@ -681,6 +681,26 @@ const App = {
     showErrorBook() {
         const errors = Storage.getErrors();
         this.showScreen('error-screen');
+
+        const stats = {
+            total: errors.length,
+            '单选题': 0,
+            '多选题': 0,
+            '判断题': 0,
+            '简答题': 0
+        };
+
+        errors.forEach(err => {
+            if (stats[err.type] !== undefined) {
+                stats[err.type]++;
+            }
+        });
+
+        document.getElementById('stat-total').innerText = stats.total;
+        document.getElementById('stat-single').innerText = stats['单选题'];
+        document.getElementById('stat-multi').innerText = stats['多选题'];
+        document.getElementById('stat-judge').innerText = stats['判断题'];
+
         const list = document.getElementById('error-list');
         list.innerHTML = '';
         if (errors.length === 0) {
@@ -700,7 +720,7 @@ const App = {
                     <span>${err.timestamp.split('T')[0]}</span>
                 </div>
                 <div class="q-text">${err.question}</div>
-                <div class="options" style="font-size:0.9rem;color:#666;margin-bottom:10px;">${optionsHtml}</div>
+                <div class="options">${optionsHtml}</div>
                 <div class="ans-row">你的答案: <span class="wrong-ans">${err.userAnswer || '未作答'}</span></div>
                 <div class="ans-row">正确答案: <span class="correct-ans">${err.answer}</span></div>
             `;

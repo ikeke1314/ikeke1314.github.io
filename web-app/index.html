@@ -173,6 +173,27 @@
                 <h1>错题本</h1>
                 <button id="btn-clear-error" class="text-btn" style="color: var(--danger-color)">清空</button>
             </header>
+            <div id="error-stats" class="card" style="margin-bottom: 15px;">
+                <h3>错题统计</h3>
+                <div class="error-stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-label">总错题数</span>
+                        <span class="stat-value" id="stat-total">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">单选题</span>
+                        <span class="stat-value" id="stat-single">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">多选题</span>
+                        <span class="stat-value" id="stat-multi">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">判断题</span>
+                        <span class="stat-value" id="stat-judge">0</span>
+                    </div>
+                </div>
+            </div>
             <div id="error-list" class="error-list-container">
                 <!-- Error items injected here -->
             </div>
