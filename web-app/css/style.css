@@ -233,7 +233,7 @@ select {
 }
 
 .option-item {
-    padding: 15px;
+    padding: 12px;
     border: 1px solid #ddd;
     border-radius: 8px;
     cursor: pointer;
@@ -241,6 +241,7 @@ select {
     align-items: flex-start;
     gap: 10px;
     transition: background 0.2s;
+    font-size: 18px;
 }
 
 .option-item.selected {

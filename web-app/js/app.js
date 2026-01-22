@@ -13,6 +13,7 @@ const App = {
     init() {
         this.bindEvents();
         this.checkPreviousData();
+        this.autoReadTimer = null;
     },
 
     bindEvents() {
@@ -314,7 +315,11 @@ const App = {
         if (!q) return;
         document.getElementById('q-index').innerText = `${this.currentQuestionIndex + 1}/${this.currentExamQuestions.length}`;
         document.getElementById('q-type').innerText = q.type;
-        document.getElementById('q-text').innerText = q.question;
+
+        const source = q.source_sheet || '未知来源';
+        const qLevels = (q.levels || []).join(',');
+        const sourceHtml = `<span style="color: #666; font-size: 14px; font-family: 'Segoe UI';">  (来源: ${source} | 等级: ${qLevels})</span>`;
+        document.getElementById('q-text').innerHTML = q.question + sourceHtml;
         const optionsContainer = document.getElementById('q-options');
         optionsContainer.innerHTML = '';
         const currentAns = this.examManager.userAnswers[this.currentQuestionIndex] || '';
@@ -477,6 +482,13 @@ const App = {
                 optionsContainer.appendChild(btn);
             }
         }
+
+        if (this.autoReadTimer) {
+            clearTimeout(this.autoReadTimer);
+        }
+        this.autoReadTimer = setTimeout(() => {
+            this.readCurrentQuestion();
+        }, 500);
     },
 
     selectOption(key, type) {
@@ -522,12 +534,12 @@ const App = {
             console.log(`[DEBUG] Answer check: submitted=${answerToCompare}, correct=${q.answer}, isCorrect=${isCorrect}`);
 
             if (isCorrect) {
-                // 答对:0.5秒后自动跳转下一题
+                // 答对:1.5秒后自动跳转下一题
                 setTimeout(() => {
                     if (this.currentQuestionIndex < this.currentExamQuestions.length - 1) {
                         this.navQuestion(1);
                     }
-                }, 500);
+                }, 1500);
             }
             // 答错:不自动跳转,停留在当前题让用户查看反馈
         } else if (type === '多选题') {
