@@ -82,7 +82,7 @@ test('手动切题取消自动跳题，退出考试清理计时器', async ({ pa
 
   await page.getByRole('button', { name: /A.*正确/ }).click();
   await page.getByRole('button', { name: '下一题' }).click();
-  await page.waitForTimeout(1400);
+  await page.waitForTimeout(700);
   await expect(page.getByText('2 / 5')).toBeVisible();
 
   page.once('dialog', (dialog) => dialog.accept());
