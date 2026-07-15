@@ -5,7 +5,8 @@ import { QuestionCard } from './components/QuestionCard';
 import { filterByCategory } from './domain/categories';
 import { isAnswerCorrect } from './domain/answers';
 import { EXAM_COUNTS, LEVEL_WEIGHTS, generateExam, scoreExam, shuffle } from './domain/exam';
-import { parseWorkbook, readWorkbookFile } from './domain/parser';
+import { parseWorkbook, readWorkbook } from './domain/parser';
+import { loadCachedQuestionBank, saveCachedQuestionBank } from './domain/question-bank-cache';
 import {
   addError,
   clearErrorBook,
@@ -15,8 +16,6 @@ import {
   saveSettings,
 } from './domain/storage';
 import { useAppDispatch, useAppState } from './state/AppContext';
-
-const AUTO_ADVANCE_DELAY_MS = 500;
 
 function formatTime(seconds: number): string {
   const minutes = Math.floor(seconds / 60).toString().padStart(2, '0');
@@ -37,18 +36,31 @@ function Header({ title, onBack }: { title: string; onBack?: () => void }) {
 export default function App() {
   const state = useAppState();
   const dispatch = useAppDispatch();
-  const autoJumpRef = useRef<number | null>(null);
-  const questionIdRef = useRef('');
+  const restoreStartedRef = useRef(false);
 
   const cancelPendingActions = useCallback(() => {
-    if (autoJumpRef.current !== null) {
-      window.clearTimeout(autoJumpRef.current);
-      autoJumpRef.current = null;
-    }
     window.speechSynthesis?.cancel();
   }, []);
 
   useEffect(() => cancelPendingActions, [cancelPendingActions]);
+
+  useEffect(() => {
+    if (restoreStartedRef.current) return;
+    restoreStartedRef.current = true;
+    void (async () => {
+      try {
+        const cached = await loadCachedQuestionBank();
+        if (!cached) return;
+        const preview = await readWorkbook(cached.data);
+        const selectedSheets = cached.selectedSheets.filter((sheet) => preview.sheetNames.includes(sheet));
+        if (selectedSheets.length === 0) return;
+        const bank = await parseWorkbook(preview.workbook, selectedSheets);
+        if (bank.questions.length > 0) dispatch({ type: 'BANK_READY', bank, restored: true });
+      } catch {
+        // 缓存不可用不应阻止用户重新手动导入题库。
+      }
+    })();
+  }, [dispatch]);
 
   const finishExam = useCallback(() => {
     if (state.mode !== 'exam' || state.questions.length === 0) return;
@@ -96,8 +108,9 @@ export default function App() {
     event.target.value = '';
     if (!file) return;
     try {
-      const preview = await readWorkbookFile(file);
-      dispatch({ type: 'WORKBOOK_READY', workbook: preview.workbook, sheetNames: preview.sheetNames });
+      const data = await file.arrayBuffer();
+      const preview = await readWorkbook(data);
+      dispatch({ type: 'WORKBOOK_READY', workbook: preview.workbook, sheetNames: preview.sheetNames, data, fileName: file.name });
     } catch {
       dispatch({ type: 'FILE_ERROR', message: '题库读取失败，请确认文件是有效的 .xlsx 或 .xls。' });
     }
@@ -111,6 +124,17 @@ export default function App() {
     try {
       const bank = await parseWorkbook(state.workbook, state.selectedSheets);
       if (bank.questions.length === 0) throw new Error('题库没有有效题目');
+      if (state.workbookData) {
+        try {
+          await saveCachedQuestionBank({
+            fileName: state.workbookFileName,
+            data: state.workbookData,
+            selectedSheets: state.selectedSheets,
+          });
+        } catch {
+          dispatch({ type: 'STORAGE_WARNING', message: '题库已导入，但浏览器未能缓存文件；刷新后需要重新选择。' });
+        }
+      }
       dispatch({ type: 'BANK_READY', bank });
     } catch {
       dispatch({ type: 'FILE_ERROR', message: '没有解析到有效题目，请检查表头和数据格式。' });
@@ -188,12 +212,7 @@ export default function App() {
     }
     if (correct && state.currentIndex < state.questions.length - 1) {
       cancelPendingActions();
-      const expectedQuestionId = question.id;
-      autoJumpRef.current = window.setTimeout(() => {
-        if (questionIdRef.current === expectedQuestionId) {
-          dispatch({ type: 'SET_INDEX', index: state.currentIndex + 1 });
-        }
-      }, AUTO_ADVANCE_DELAY_MS);
+      dispatch({ type: 'SET_INDEX', index: state.currentIndex + 1 });
     }
   };
 
@@ -214,7 +233,6 @@ export default function App() {
   };
 
   const currentQuestion = state.questions[state.currentIndex];
-  questionIdRef.current = currentQuestion?.id ?? '';
 
   const errors = state.screen === 'errors' ? getErrorBook() : [];
 
