@@ -1,0 +1,75 @@
+<UserControl x:Class="SkillExam.App.Views.HomeView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             AutomationProperties.Name="技能士考试刷题系统首页">
+    <Grid>
+        <StackPanel Width="620" Margin="28" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <TextBlock Text="技能士理论考核模拟系统 V3.0"
+                       Style="{StaticResource DesktopPageTitleTextStyle}"
+                       HorizontalAlignment="Center" />
+            <TextBlock Text="© 生产技术部 PE 组"
+                       Style="{StaticResource SecondaryTextStyle}"
+                       HorizontalAlignment="Center" Margin="0,6,0,18" />
+
+            <Button Content="加载自定义题库"
+                    Command="{Binding LoadBankCommand}"
+                    Style="{StaticResource AccentButtonStyle}"
+                    Width="240" TabIndex="0" HorizontalAlignment="Center"
+                    AutomationProperties.HelpText="选择 Excel 题库并选择需要加载的 Sheet" />
+
+            <StackPanel Margin="0,12,0,18" HorizontalAlignment="Center" MaxWidth="600">
+                <TextBlock Text="{Binding BankState.Status}"
+                           Style="{StaticResource BodyTextStyle}"
+                           FontWeight="SemiBold" HorizontalAlignment="Center" />
+                <TextBlock Text="{Binding BankState.LoadedSheetsText}"
+                           Style="{StaticResource CaptionTextStyle}"
+                           TextTrimming="CharacterEllipsis" HorizontalAlignment="Center" Margin="0,3,0,0" />
+                <TextBlock Text="{Binding BankState.FilePath, TargetNullValue=题库路径：未选择, StringFormat=题库路径：{0}}"
+                           Style="{StaticResource CaptionTextStyle}"
+                           TextTrimming="CharacterEllipsis" HorizontalAlignment="Center" Margin="0,3,0,0"
+                           ToolTip="{Binding BankState.FilePath}" />
+            </StackPanel>
+
+            <Grid Width="540">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="240" />
+                    <ColumnDefinition Width="60" />
+                    <ColumnDefinition Width="240" />
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock Text="请选择等级" Style="{StaticResource FormLabelTextStyle}" HorizontalAlignment="Center" />
+                    <ComboBox ItemsSource="{Binding Levels}" SelectedItem="{Binding SelectedLevel}"
+                              Height="40" TabIndex="1" AutomationProperties.Name="请选择等级">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Converter={StaticResource SkillLevelToDisplayNameConverter}}" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </StackPanel>
+                <StackPanel Grid.Column="2">
+                    <TextBlock Text="请选择类别" Style="{StaticResource FormLabelTextStyle}" HorizontalAlignment="Center" />
+                    <ComboBox ItemsSource="{Binding CategoryOptions}"
+                              SelectedItem="{Binding SelectedCategory}"
+                              DisplayMemberPath="DisplayName" Height="40" TabIndex="2"
+                              AutomationProperties.Name="请选择类别" />
+                </StackPanel>
+            </Grid>
+
+            <TextBlock Text="{Binding RuleText, StringFormat=出题规则：{0}}"
+                       Style="{StaticResource CaptionTextStyle}"
+                       HorizontalAlignment="Center" Margin="0,8,0,18" />
+
+            <StackPanel Width="240" HorizontalAlignment="Center">
+                <Button Content="开始模拟考试" Command="{Binding StartExamCommand}"
+                        Style="{StaticResource PrimaryButtonStyle}" TabIndex="3" Margin="0,0,0,10" />
+                <Button Content="专项练习模式" Command="{Binding ShowPracticeCommand}"
+                        Style="{StaticResource PrimaryButtonStyle}" TabIndex="4" Margin="0,0,0,10" />
+                <Button Content="我的错题本" Command="{Binding ShowErrorsCommand}"
+                        Style="{StaticResource PrimaryButtonStyle}" TabIndex="5" Margin="0,0,0,10" />
+                <Button Content="设置" Command="{Binding ShowSettingsCommand}"
+                        Style="{StaticResource SecondaryButtonStyle}" TabIndex="6" />
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</UserControl>

@@ -1,0 +1,64 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{A98361AA-2E5E-4421-B47B-A750DD393CF6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SkillExam.Core", "src\SkillExam.Core\SkillExam.Core.csproj", "{E6B81C77-5A22-47B0-95FA-8BD530E77EBF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SkillExam.Infrastructure", "src\SkillExam.Infrastructure\SkillExam.Infrastructure.csproj", "{A4C48049-98DD-455B-8C84-DB17A2A41257}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SkillExam.App", "src\SkillExam.App\SkillExam.App.csproj", "{5EC52200-F58E-4D92-8C34-405A50E436DF}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{D3837E52-F35F-44E1-A187-3B44737AFBB9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SkillExam.Core.Tests", "tests\SkillExam.Core.Tests\SkillExam.Core.Tests.csproj", "{DFF15305-382D-414A-A43F-AD25D41E4ACB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SkillExam.Infrastructure.Tests", "tests\SkillExam.Infrastructure.Tests\SkillExam.Infrastructure.Tests.csproj", "{C5E3DC80-1A54-40ED-B5D9-1D74AECE67FA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SkillExam.App.Tests", "tests\SkillExam.App.Tests\SkillExam.App.Tests.csproj", "{14227CBD-1256-4EAE-AED3-31CFED163727}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E6B81C77-5A22-47B0-95FA-8BD530E77EBF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E6B81C77-5A22-47B0-95FA-8BD530E77EBF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E6B81C77-5A22-47B0-95FA-8BD530E77EBF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E6B81C77-5A22-47B0-95FA-8BD530E77EBF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A4C48049-98DD-455B-8C84-DB17A2A41257}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A4C48049-98DD-455B-8C84-DB17A2A41257}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A4C48049-98DD-455B-8C84-DB17A2A41257}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A4C48049-98DD-455B-8C84-DB17A2A41257}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5EC52200-F58E-4D92-8C34-405A50E436DF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5EC52200-F58E-4D92-8C34-405A50E436DF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5EC52200-F58E-4D92-8C34-405A50E436DF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5EC52200-F58E-4D92-8C34-405A50E436DF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DFF15305-382D-414A-A43F-AD25D41E4ACB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DFF15305-382D-414A-A43F-AD25D41E4ACB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DFF15305-382D-414A-A43F-AD25D41E4ACB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DFF15305-382D-414A-A43F-AD25D41E4ACB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C5E3DC80-1A54-40ED-B5D9-1D74AECE67FA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C5E3DC80-1A54-40ED-B5D9-1D74AECE67FA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C5E3DC80-1A54-40ED-B5D9-1D74AECE67FA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C5E3DC80-1A54-40ED-B5D9-1D74AECE67FA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{14227CBD-1256-4EAE-AED3-31CFED163727}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{14227CBD-1256-4EAE-AED3-31CFED163727}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{14227CBD-1256-4EAE-AED3-31CFED163727}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{14227CBD-1256-4EAE-AED3-31CFED163727}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{E6B81C77-5A22-47B0-95FA-8BD530E77EBF} = {A98361AA-2E5E-4421-B47B-A750DD393CF6}
+		{A4C48049-98DD-455B-8C84-DB17A2A41257} = {A98361AA-2E5E-4421-B47B-A750DD393CF6}
+		{5EC52200-F58E-4D92-8C34-405A50E436DF} = {A98361AA-2E5E-4421-B47B-A750DD393CF6}
+		{DFF15305-382D-414A-A43F-AD25D41E4ACB} = {D3837E52-F35F-44E1-A187-3B44737AFBB9}
+		{C5E3DC80-1A54-40ED-B5D9-1D74AECE67FA} = {D3837E52-F35F-44E1-A187-3B44737AFBB9}
+		{14227CBD-1256-4EAE-AED3-31CFED163727} = {D3837E52-F35F-44E1-A187-3B44737AFBB9}
+	EndGlobalSection
+EndGlobal

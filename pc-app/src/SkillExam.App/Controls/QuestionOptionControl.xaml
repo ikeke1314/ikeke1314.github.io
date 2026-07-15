@@ -1,0 +1,76 @@
+<UserControl x:Class="SkillExam.App.Controls.QuestionOptionControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Name="Root">
+    <UserControl.Resources>
+        <Style x:Key="OptionTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyTextStyle}">
+            <Setter Property="FontSize" Value="17" />
+            <Setter Property="LineHeight" Value="25" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsCorrect}" Value="True">
+                    <Setter Property="Foreground" Value="{StaticResource SuccessBrush}" />
+                    <Setter Property="FontWeight" Value="SemiBold" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsIncorrectSelection}" Value="True">
+                    <Setter Property="Foreground" Value="{StaticResource ErrorBrush}" />
+                    <Setter Property="FontWeight" Value="SemiBold" />
+                    <Setter Property="TextDecorations" Value="Strikethrough" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <DataTemplate x:Key="OptionContentTemplate">
+            <Grid Margin="5,1,0,1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="{Binding Key, StringFormat={}{0}.}"
+                           Style="{StaticResource OptionTextStyle}" FontWeight="SemiBold" Margin="0,0,7,0" />
+                <TextBlock Grid.Column="1" Text="{Binding Text}"
+                           Style="{StaticResource OptionTextStyle}" TextWrapping="Wrap" />
+            </Grid>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Grid Margin="0,2">
+        <RadioButton IsChecked="{Binding Option.IsSelected, ElementName=Root, Mode=TwoWay}"
+                     Command="{Binding Command, ElementName=Root}"
+                     CommandParameter="{Binding Option, ElementName=Root}"
+                     ContentTemplate="{StaticResource OptionContentTemplate}"
+                     Content="{Binding Option, ElementName=Root}"
+                     GroupName="QuestionOptions"
+                     Padding="4" MinHeight="38"
+                     AutomationProperties.Name="{Binding Option.Text, ElementName=Root}">
+            <RadioButton.Style>
+                <Style TargetType="RadioButton" BasedOn="{StaticResource DesktopRadioButtonStyle}">
+                    <Setter Property="Visibility" Value="Visible" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsMultipleChoice, ElementName=Root}" Value="True">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </RadioButton.Style>
+        </RadioButton>
+
+        <CheckBox IsChecked="{Binding Option.IsSelected, ElementName=Root, Mode=TwoWay}"
+                  Command="{Binding Command, ElementName=Root}"
+                  CommandParameter="{Binding Option, ElementName=Root}"
+                  ContentTemplate="{StaticResource OptionContentTemplate}"
+                  Content="{Binding Option, ElementName=Root}"
+                  Padding="4" MinHeight="38"
+                  AutomationProperties.Name="{Binding Option.Text, ElementName=Root}">
+            <CheckBox.Style>
+                <Style TargetType="CheckBox" BasedOn="{StaticResource DesktopCheckBoxStyle}">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsMultipleChoice, ElementName=Root}" Value="True">
+                            <Setter Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </CheckBox.Style>
+        </CheckBox>
+    </Grid>
+</UserControl>

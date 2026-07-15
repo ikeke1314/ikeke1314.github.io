@@ -1,0 +1,8 @@
+<UserControl x:Class="SkillExam.App.Controls.TimerDisplay"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel Orientation="Horizontal">
+        <TextBlock Text="剩余时间 " Style="{StaticResource CaptionTextStyle}" VerticalAlignment="Center" />
+        <TextBlock Text="{Binding RemainingTimeText}" Foreground="{StaticResource PrimaryBrush}" FontWeight="SemiBold" FontSize="16" />
+    </StackPanel>
+</UserControl>

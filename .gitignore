@@ -17,6 +17,13 @@ pc-app/dist/
 pc-app/config.json
 pc-app/practice_progress.json
 pc-app/error_questions.json
+pc-app/**/bin/
+pc-app/**/obj/
+pc-app/**/TestResults/
+pc-app/artifacts/
+pc-app/*.db
+pc-app/logs/
+pc-app/backups/
 
 # Excel 打开时生成的临时锁文件
 ~$*.xls
