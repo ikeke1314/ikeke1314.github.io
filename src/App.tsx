@@ -16,6 +16,8 @@ import {
 } from './domain/storage';
 import { useAppDispatch, useAppState } from './state/AppContext';
 
+const AUTO_ADVANCE_DELAY_MS = 500;
+
 function formatTime(seconds: number): string {
   const minutes = Math.floor(seconds / 60).toString().padStart(2, '0');
   const remainder = (seconds % 60).toString().padStart(2, '0');
@@ -191,7 +193,7 @@ export default function App() {
         if (questionIdRef.current === expectedQuestionId) {
           dispatch({ type: 'SET_INDEX', index: state.currentIndex + 1 });
         }
-      }, 1200);
+      }, AUTO_ADVANCE_DELAY_MS);
     }
   };
 
