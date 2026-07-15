@@ -1,6 +1,6 @@
-*.xlsx
-exam_bank/
-.DS_Store
-Thumbs.db
-*.tmp
-*.log
+node_modules/
+dist/
+output/
+playwright-report/
+test-results/
+*.local
