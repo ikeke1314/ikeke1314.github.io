@@ -1,9 +1,11 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import * as XLSX from 'xlsx';
 import { describe, expect, it } from 'vitest';
 import { parseWorkbook, readWorkbook } from '../src/domain/parser';
 import { createWorkbookFixture } from './fixtures/workbook';
+
+const realWorkbookPath = resolve(process.cwd(), '../pc-app/exam_bank/PE 技能士题库.xlsx');
 
 describe('题库解析', () => {
   it('从第 4 行读取表头、解析四种题型和六级标记', async () => {
@@ -21,9 +23,8 @@ describe('题库解析', () => {
     await expect(readWorkbook(bytes)).resolves.toMatchObject({ sheetNames: ['正常题库', '数据透视表'] });
   });
 
-  it('能解析提供的真实题库', async () => {
-    const path = resolve(process.cwd(), '../pc-app/exam_bank/PE 技能士题库.xlsx');
-    const workbook = XLSX.read(readFileSync(path), { type: 'buffer' });
+  it.skipIf(!existsSync(realWorkbookPath))('能解析提供的真实题库', async () => {
+    const workbook = XLSX.read(readFileSync(realWorkbookPath), { type: 'buffer' });
     const bank = await parseWorkbook(workbook);
     expect(bank.questions).toHaveLength(1291);
     expect(bank.levels).toEqual(['一级', '二级', '三级', '四级', '五级', '六级']);
