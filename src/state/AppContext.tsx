@@ -10,6 +10,8 @@ export interface AppState {
   screen: Screen;
   bank: QuestionBank | null;
   workbook: WorkBook | null;
+  workbookData: ArrayBuffer | null;
+  workbookFileName: string;
   sheetNames: string[];
   selectedSheets: string[];
   fileStatus: string;
@@ -29,10 +31,10 @@ export interface AppState {
 }
 
 type Action =
-  | { type: 'WORKBOOK_READY'; workbook: WorkBook; sheetNames: string[] }
+  | { type: 'WORKBOOK_READY'; workbook: WorkBook; sheetNames: string[]; data: ArrayBuffer; fileName: string }
   | { type: 'CLOSE_WORKBOOK' }
   | { type: 'SET_SHEETS'; sheets: string[] }
-  | { type: 'BANK_READY'; bank: QuestionBank }
+  | { type: 'BANK_READY'; bank: QuestionBank; restored?: boolean }
   | { type: 'FILE_ERROR'; message: string }
   | { type: 'SET_SCREEN'; screen: Screen }
   | { type: 'SET_SETTINGS'; settings: Settings }
@@ -51,6 +53,8 @@ function initialState(): AppState {
     screen: 'home',
     bank: null,
     workbook: null,
+    workbookData: null,
+    workbookFileName: '',
     sheetNames: [],
     selectedSheets: [],
     fileStatus: '未加载题库',
@@ -76,13 +80,15 @@ function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         workbook: action.workbook,
+        workbookData: action.data,
+        workbookFileName: action.fileName,
         sheetNames: action.sheetNames,
         selectedSheets: action.sheetNames.filter((name) => !name.includes('透视')),
         fileStatus: '请选择要导入的 Sheet',
         fileError: '',
       };
     case 'CLOSE_WORKBOOK':
-      return { ...state, workbook: null, sheetNames: [], selectedSheets: [], fileStatus: state.bank ? `已加载 ${state.bank.questions.length} 道题` : '未加载题库', fileError: '' };
+      return { ...state, workbook: null, workbookData: null, workbookFileName: '', sheetNames: [], selectedSheets: [], fileStatus: state.bank ? `已加载 ${state.bank.questions.length} 道题` : '未加载题库', fileError: '' };
     case 'SET_SHEETS':
       return { ...state, selectedSheets: action.sheets };
     case 'BANK_READY':
@@ -90,14 +96,16 @@ function reducer(state: AppState, action: Action): AppState {
         ...state,
         bank: action.bank,
         workbook: null,
+        workbookData: null,
+        workbookFileName: '',
         sheetNames: [],
         selectedSheets: [],
         practiceLevels: action.bank.levels,
-        fileStatus: `已加载 ${action.bank.questions.length} 道题`,
+        fileStatus: `${action.restored ? '已恢复' : '已加载'} ${action.bank.questions.length} 道题`,
         fileError: '',
       };
     case 'FILE_ERROR':
-      return { ...state, workbook: null, sheetNames: [], fileStatus: '读取失败', fileError: action.message };
+      return { ...state, workbook: null, workbookData: null, workbookFileName: '', sheetNames: [], fileStatus: '读取失败', fileError: action.message };
     case 'SET_SCREEN':
       return { ...state, screen: action.screen };
     case 'SET_SETTINGS':

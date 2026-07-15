@@ -37,4 +37,4 @@ npx vite preview
 
 ## 数据说明
 
-Excel 只在浏览器本地解析，不上传到 GitHub 或服务器。部署站点不包含 `pc-app` 题库，用户需要自行选择 Excel 文件。
+Excel 只在浏览器本地解析，不上传到 GitHub 或服务器。用户首次选择文件后，浏览器会使用 IndexedDB 缓存上次题库和 Sheet 选择，以便刷新后自动恢复。部署站点本身不包含 `pc-app` 题库。
