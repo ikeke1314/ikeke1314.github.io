@@ -20,7 +20,7 @@ public sealed class DesktopLayoutTests
     {
         var xaml = ReadSource("src", "SkillExam.App", "Views", "HomeView.xaml");
 
-        Assert.Contains("技能士理论考核模拟系统 V3.0", xaml, StringComparison.Ordinal);
+        Assert.Contains("技能士理论考核模拟系统 V3.1", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("UniformGrid", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("ScrollViewer", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("CardBorderStyle", xaml, StringComparison.Ordinal);
@@ -62,6 +62,26 @@ public sealed class DesktopLayoutTests
         Assert.Contains("ItemsSource=\"{Binding Groups, ElementName=Root}\"", navigatorXaml, StringComparison.Ordinal);
         Assert.Contains("<WrapPanel Orientation=\"Horizontal\"", navigatorXaml, StringComparison.Ordinal);
         Assert.DoesNotContain("CollectionViewSource", navigatorXaml, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SettingsView_ProvidesAutoNextDelaySlider()
+    {
+        var xaml = ReadSource("src", "SkillExam.App", "Views", "SettingsView.xaml");
+
+        Assert.Contains("Text=\"跳题延迟\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Minimum=\"0\" Maximum=\"3\" TickFrequency=\"0.1\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Value=\"{Binding AutoNextDelaySeconds}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding AutoNextDelayDisplay}\"", xaml, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ErrorBookView_UsesOneWayBindingsForReadOnlyStatistics()
+    {
+        var xaml = ReadSource("src", "SkillExam.App", "Views", "ErrorBookView.xaml");
+
+        Assert.Contains("{Binding TotalQuestions, Mode=OneWay}", xaml, StringComparison.Ordinal);
+        Assert.Contains("{Binding TotalAttempts, Mode=OneWay}", xaml, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -17,11 +17,40 @@ public sealed class SettingsRepository(SqliteDatabase database) : ISettingsRepos
         command.CommandText = "SELECT value FROM settings WHERE key = $key;";
         command.Parameters.AddWithValue("$key", SettingsKey);
         var value = await command.ExecuteScalarAsync(cancellationToken) as string;
-        return value is null ? new AppSettings() : JsonSerializer.Deserialize<AppSettings>(value, JsonOptions) ?? new AppSettings();
+        if (value is null)
+        {
+            return new AppSettings();
+        }
+
+        var settings = JsonSerializer.Deserialize<AppSettings>(value, JsonOptions) ?? new AppSettings();
+        using var document = JsonDocument.Parse(value);
+        if (!document.RootElement.TryGetProperty("autoNextDelaySettingsVersion", out _))
+        {
+            // V3.1 短期版本的默认值是 1.5 秒；只迁移该默认值，保留用户主动选择的其他延迟。
+            var migratedDelay = settings.AutoNextDelayMilliseconds == 1500
+                ? AppSettings.DefaultAutoNextDelayMilliseconds
+                : AppSettings.NormalizeAutoNextDelayMilliseconds(settings.AutoNextDelayMilliseconds);
+            return settings with
+            {
+                AutoNextDelayMilliseconds = migratedDelay,
+                AutoNextDelaySettingsVersion = AppSettings.CurrentAutoNextDelaySettingsVersion
+            };
+        }
+
+        return settings with
+        {
+            AutoNextDelayMilliseconds = AppSettings.NormalizeAutoNextDelayMilliseconds(settings.AutoNextDelayMilliseconds),
+            AutoNextDelaySettingsVersion = AppSettings.CurrentAutoNextDelaySettingsVersion
+        };
     }
 
     public async Task SaveAsync(AppSettings settings, CancellationToken cancellationToken = default)
     {
+        settings = settings with
+        {
+            AutoNextDelayMilliseconds = AppSettings.NormalizeAutoNextDelayMilliseconds(settings.AutoNextDelayMilliseconds),
+            AutoNextDelaySettingsVersion = AppSettings.CurrentAutoNextDelaySettingsVersion
+        };
         await using var connection = await database.OpenConnectionAsync(cancellationToken);
         await UpsertAsync(connection, null, SettingsKey, JsonSerializer.Serialize(settings, JsonOptions), DateTimeOffset.UtcNow, cancellationToken);
     }

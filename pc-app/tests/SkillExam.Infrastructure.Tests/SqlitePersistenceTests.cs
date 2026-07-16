@@ -51,12 +51,19 @@ public sealed class SqlitePersistenceTests : IDisposable
         var settingsRepository = new SettingsRepository(database);
         var progressRepository = new ProgressRepository(database);
         var errorRepository = new ErrorBookRepository(database);
-        var settings = new AppSettings { LastQuestionBankPath = @"D:\bank.xlsx", AutoSpeechEnabled = false, SpeechRate = 2 };
+        var settings = new AppSettings
+        {
+            LastQuestionBankPath = @"D:\bank.xlsx",
+            AutoSpeechEnabled = false,
+            SpeechRate = 2,
+            AutoNextDelayMilliseconds = 2500
+        };
         await settingsRepository.SaveAsync(settings);
         var restoredSettings = await settingsRepository.GetAsync();
         Assert.Equal(settings.LastQuestionBankPath, restoredSettings.LastQuestionBankPath);
         Assert.Equal(settings.AutoSpeechEnabled, restoredSettings.AutoSpeechEnabled);
         Assert.Equal(settings.SpeechRate, restoredSettings.SpeechRate);
+        Assert.Equal(settings.AutoNextDelayMilliseconds, restoredSettings.AutoNextDelayMilliseconds);
 
         var question = CreateQuestion("稳定题目");
         var snapshot = new PracticeSessionSnapshot
@@ -85,6 +92,48 @@ public sealed class SqlitePersistenceTests : IDisposable
         Assert.Equal("C", item.LastUserAnswer);
         await errorRepository.ClearAsync();
         Assert.Empty(await errorRepository.GetAllAsync());
+    }
+
+    [Fact]
+    public async Task LegacySettingsWithoutAutoNextDelay_UseDefaultDelay()
+    {
+        var database = CreateDatabase();
+        await database.InitializeAsync();
+        await using (var connection = await database.OpenConnectionAsync())
+        {
+            var command = connection.CreateCommand();
+            command.CommandText = "INSERT INTO settings(key, value, updated_at) VALUES ('app_settings', $value, $updatedAt);";
+            command.Parameters.AddWithValue("$value", "{\"autoSpeechEnabled\":false}");
+            command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.UtcNow.ToString("O"));
+            await command.ExecuteNonQueryAsync();
+        }
+
+        var restoredSettings = await new SettingsRepository(database).GetAsync();
+
+        Assert.Equal(AppSettings.DefaultAutoNextDelayMilliseconds, restoredSettings.AutoNextDelayMilliseconds);
+    }
+
+    [Theory]
+    [InlineData(1500, 1000)]
+    [InlineData(2400, 2400)]
+    [InlineData(5000, 3000)]
+    public async Task LegacyDelaySettings_MigrateOldDefaultAndPreserveCustomValue(int storedDelay, int expectedDelay)
+    {
+        var database = CreateDatabase();
+        await database.InitializeAsync();
+        await using (var connection = await database.OpenConnectionAsync())
+        {
+            var command = connection.CreateCommand();
+            command.CommandText = "INSERT INTO settings(key, value, updated_at) VALUES ('app_settings', $value, $updatedAt);";
+            command.Parameters.AddWithValue("$value", $"{{\"autoNextDelayMilliseconds\":{storedDelay}}}");
+            command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.UtcNow.ToString("O"));
+            await command.ExecuteNonQueryAsync();
+        }
+
+        var restoredSettings = await new SettingsRepository(database).GetAsync();
+
+        Assert.Equal(expectedDelay, restoredSettings.AutoNextDelayMilliseconds);
+        Assert.Equal(AppSettings.CurrentAutoNextDelaySettingsVersion, restoredSettings.AutoNextDelaySettingsVersion);
     }
 
     public void Dispose()

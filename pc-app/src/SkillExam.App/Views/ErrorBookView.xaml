@@ -14,8 +14,8 @@
         <StackPanel HorizontalAlignment="Center">
             <TextBlock Text="我的错题本" Style="{StaticResource DesktopPageTitleTextStyle}" HorizontalAlignment="Center" />
             <TextBlock Style="{StaticResource CaptionTextStyle}" HorizontalAlignment="Center" Margin="0,5,0,0">
-                <Run Text="{Binding TotalQuestions}" /><Run Text=" 道错题，累计 " />
-                <Run Text="{Binding TotalAttempts}" /><Run Text=" 次错误作答" />
+                <Run Text="{Binding TotalQuestions, Mode=OneWay}" /><Run Text=" 道错题，累计 " />
+                <Run Text="{Binding TotalAttempts, Mode=OneWay}" /><Run Text=" 次错误作答" />
             </TextBlock>
         </StackPanel>
 

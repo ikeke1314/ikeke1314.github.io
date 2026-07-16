@@ -484,7 +484,9 @@ public sealed partial class QuestionSessionViewModel : ObservableObject
     {
         try
         {
-            await _clock.DelayAsync(TimeSpan.FromSeconds(1.5), cancellationToken);
+            var delayMilliseconds = AppSettings.NormalizeAutoNextDelayMilliseconds(
+                _settings.AutoNextDelayMilliseconds);
+            await _clock.DelayAsync(TimeSpan.FromMilliseconds(delayMilliseconds), cancellationToken);
             if (!_finished && CurrentIndex == sourceIndex && CurrentQuestion.Id == questionId &&
                 _answerStatuses.GetValueOrDefault(questionId) == AnswerStatus.Correct)
             {

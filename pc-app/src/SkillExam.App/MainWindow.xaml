@@ -3,7 +3,7 @@
                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
                  xmlns:controls="clr-namespace:SkillExam.App.Controls"
-                 Title="技能士考试刷题系统 V3.0"
+                 Title="技能士考试刷题系统 V3.1"
                  Width="1100" Height="760" MinWidth="1000" MinHeight="700"
                  ExtendsContentIntoTitleBar="True"
                  WindowStartupLocation="CenterScreen" Background="{StaticResource PageBackgroundBrush}">
@@ -12,7 +12,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
-        <ui:TitleBar Title="技能士考试刷题系统 V3.0"
+        <ui:TitleBar Title="技能士考试刷题系统 V3.1"
                      ShowMinimize="True" ShowMaximize="True" ShowClose="True"
                      Height="48" />
         <Grid Grid.Row="1">

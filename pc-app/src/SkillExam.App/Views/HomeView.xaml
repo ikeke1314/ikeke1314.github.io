@@ -4,7 +4,7 @@
              AutomationProperties.Name="技能士考试刷题系统首页">
     <Grid>
         <StackPanel Width="620" Margin="28" HorizontalAlignment="Center" VerticalAlignment="Center">
-            <TextBlock Text="技能士理论考核模拟系统 V3.0"
+            <TextBlock Text="技能士理论考核模拟系统 V3.1"
                        Style="{StaticResource DesktopPageTitleTextStyle}"
                        HorizontalAlignment="Center" />
             <TextBlock Text="© 生产技术部 PE 组"

@@ -45,6 +45,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         AutoSpeechEnabled = settings.AutoSpeechEnabled;
         VoiceName = settings.VoiceName;
         SpeechRate = settings.SpeechRate;
+        AutoNextDelaySeconds = AppSettings.NormalizeAutoNextDelayMilliseconds(settings.AutoNextDelayMilliseconds) / 1000d;
         ReduceMotion = settings.ReduceMotion;
         Voices = new ObservableCollection<SpeechVoice>(_speechService.GetVoices());
         if (string.IsNullOrWhiteSpace(VoiceName))
@@ -58,12 +59,16 @@ public sealed partial class SettingsViewModel : ObservableObject
     public string VoiceWarning => _speechService.IsChineseVoiceAvailable
         ? "已优先选择中文语音。"
         : "未检测到中文语音，将使用系统默认语音。";
+    public string AutoNextDelayDisplay => $"{AutoNextDelaySeconds:0.0} 秒";
 
     [ObservableProperty] private bool _autoSpeechEnabled;
     [ObservableProperty] private string? _voiceName;
     [ObservableProperty] private int _speechRate;
+    [ObservableProperty] private double _autoNextDelaySeconds;
     [ObservableProperty] private bool _reduceMotion;
     [ObservableProperty] private bool _isBusy;
+
+    partial void OnAutoNextDelaySecondsChanged(double value) => OnPropertyChanged(nameof(AutoNextDelayDisplay));
 
     [RelayCommand]
     private async Task SaveAsync()
@@ -75,6 +80,8 @@ public sealed partial class SettingsViewModel : ObservableObject
                 AutoSpeechEnabled = AutoSpeechEnabled,
                 VoiceName = VoiceName,
                 SpeechRate = Math.Clamp(SpeechRate, -10, 10),
+                AutoNextDelayMilliseconds = AppSettings.NormalizeAutoNextDelayMilliseconds(
+                    (int)Math.Round(AutoNextDelaySeconds * 1000, MidpointRounding.AwayFromZero)),
                 ReduceMotion = ReduceMotion
             };
             await _repository.SaveAsync(settings);
@@ -118,7 +125,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     [RelayCommand]
     private async Task ResetAsync()
     {
-        if (!await _dialogs.ConfirmAsync("恢复默认设置", "将恢复自动读题、默认语速和动画设置，题库路径与用户数据不会删除。", "恢复"))
+        if (!await _dialogs.ConfirmAsync("恢复默认设置", "将恢复自动读题、默认语速、跳题延迟和动画设置，题库路径与用户数据不会删除。", "恢复"))
         {
             return;
         }
@@ -130,6 +137,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         AutoSpeechEnabled = defaults.AutoSpeechEnabled;
         VoiceName = Voices.FirstOrDefault(voice => voice.IsChinese)?.Name ?? Voices.FirstOrDefault()?.Name;
         SpeechRate = defaults.SpeechRate;
+        AutoNextDelaySeconds = defaults.AutoNextDelayMilliseconds / 1000d;
         ReduceMotion = defaults.ReduceMotion;
     }
 

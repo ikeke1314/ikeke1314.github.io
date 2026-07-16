@@ -45,9 +45,23 @@
                 Width="720" HorizontalAlignment="Center" Margin="0,0,0,10">
             <Grid>
                 <Grid.ColumnDefinitions><ColumnDefinition Width="150" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                <TextBlock Text="显示与动效" Style="{StaticResource SectionTitleTextStyle}" />
+                <TextBlock Text="答题与显示" Style="{StaticResource SectionTitleTextStyle}" />
                 <StackPanel Grid.Column="1">
-                    <CheckBox Content="减少动画" IsChecked="{Binding ReduceMotion}" Style="{StaticResource DesktopCheckBoxStyle}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="80" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="62" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="跳题延迟" Style="{StaticResource FormLabelTextStyle}" VerticalAlignment="Center" />
+                        <Slider Grid.Column="1" Minimum="0" Maximum="3" TickFrequency="0.1"
+                                IsSnapToTickEnabled="True" Value="{Binding AutoNextDelaySeconds}"
+                                VerticalAlignment="Center" AutomationProperties.Name="答对后跳题延迟" />
+                        <TextBlock Grid.Column="2" Text="{Binding AutoNextDelayDisplay}" Style="{StaticResource BodyTextStyle}"
+                                   HorizontalAlignment="Right" VerticalAlignment="Center" />
+                    </Grid>
+                    <CheckBox Content="减少动画" IsChecked="{Binding ReduceMotion}" Style="{StaticResource DesktopCheckBoxStyle}"
+                              Margin="0,12,0,0" />
                     <TextBlock Text="开启后避免非必要的过渡动画。" Style="{StaticResource CaptionTextStyle}" Margin="25,3,0,0" />
                 </StackPanel>
             </Grid>
