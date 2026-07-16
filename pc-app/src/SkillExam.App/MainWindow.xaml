@@ -4,6 +4,7 @@
                  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
                  xmlns:controls="clr-namespace:SkillExam.App.Controls"
                  Title="技能士考试刷题系统 V3.1"
+                 Icon="/Assets/AppIcon.ico"
                  Width="1100" Height="760" MinWidth="1000" MinHeight="700"
                  ExtendsContentIntoTitleBar="True"
                  WindowStartupLocation="CenterScreen" Background="{StaticResource PageBackgroundBrush}">
