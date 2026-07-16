@@ -61,6 +61,92 @@ public sealed class ViewModelInteractionTests
     }
 
     [Fact]
+    public async Task MultipleChoice_ConfirmsAllSelectedOptionsTogether()
+    {
+        var questions = new[] { CreateQuestion("multiple", "AB", type: QuestionType.MultipleChoice) };
+        using var logger = new LoggerConfiguration().CreateLogger();
+        var viewModel = new QuestionSessionViewModel(
+            questions,
+            SessionMode.Practice,
+            new AnswerEvaluator(),
+            new MemoryErrorBookRepository(),
+            new MemoryProgressRepository(),
+            new SilentSpeechService(),
+            new ImmediateClock(),
+            new SilentDialogService(),
+            new AppSettings { AutoSpeechEnabled = false },
+            logger,
+            () => Task.CompletedTask,
+            practiceLevels: [SkillLevel.Level1],
+            practiceCategories: []);
+
+        viewModel.Options.Single(option => option.Key == "A").IsSelected = true;
+        viewModel.Options.Single(option => option.Key == "B").IsSelected = true;
+        await viewModel.ConfirmAnswerCommand.ExecuteAsync(null);
+
+        Assert.Equal(AnswerStatus.Correct, viewModel.FeedbackStatus);
+        Assert.Equal("回答正确", viewModel.FeedbackMessage);
+        Assert.All(viewModel.Options, option => Assert.True(option.IsSelected));
+        Assert.False(viewModel.CanAnswerCurrent);
+    }
+
+    [Fact]
+    public async Task TrueFalse_SelectsAndEvaluatesImmediately()
+    {
+        var questions = new[] { CreateQuestion("true-false", "A", type: QuestionType.TrueFalse) };
+        using var logger = new LoggerConfiguration().CreateLogger();
+        var viewModel = new QuestionSessionViewModel(
+            questions,
+            SessionMode.Practice,
+            new AnswerEvaluator(),
+            new MemoryErrorBookRepository(),
+            new MemoryProgressRepository(),
+            new SilentSpeechService(),
+            new ImmediateClock(),
+            new SilentDialogService(),
+            new AppSettings { AutoSpeechEnabled = false },
+            logger,
+            () => Task.CompletedTask,
+            practiceLevels: [SkillLevel.Level1],
+            practiceCategories: []);
+
+        await viewModel.SelectOptionCommand.ExecuteAsync(viewModel.Options.Single(option => option.Key == "A"));
+
+        Assert.Equal(AnswerStatus.Correct, viewModel.FeedbackStatus);
+        Assert.True(viewModel.Options.Single(option => option.Key == "A").IsCorrect);
+        Assert.False(viewModel.CanAnswerCurrent);
+    }
+
+    [Fact]
+    public async Task ShortAnswer_RevealsReferenceAndEvaluatesEnteredText()
+    {
+        var questions = new[] { CreateQuestion("short-answer", "标准答案", type: QuestionType.ShortAnswer) };
+        using var logger = new LoggerConfiguration().CreateLogger();
+        var viewModel = new QuestionSessionViewModel(
+            questions,
+            SessionMode.Practice,
+            new AnswerEvaluator(),
+            new MemoryErrorBookRepository(),
+            new MemoryProgressRepository(),
+            new SilentSpeechService(),
+            new ImmediateClock(),
+            new SilentDialogService(),
+            new AppSettings { AutoSpeechEnabled = false },
+            logger,
+            () => Task.CompletedTask,
+            practiceLevels: [SkillLevel.Level1],
+            practiceCategories: []);
+
+        viewModel.AnswerText = "标准答案";
+        await viewModel.RevealAnswerCommand.ExecuteAsync(null);
+
+        Assert.True(viewModel.IsReferenceVisible);
+        Assert.Equal("标准答案", viewModel.ReferenceAnswer);
+        Assert.Equal(AnswerStatus.Correct, viewModel.FeedbackStatus);
+        Assert.False(viewModel.CanAnswerCurrent);
+    }
+
+    [Fact]
     public async Task SubmitExam_RecordsUnansweredQuestionsAndOffersThemForReview()
     {
         var questions = new[] { CreateQuestion("unanswered", "A") };
@@ -191,12 +277,15 @@ public sealed class ViewModelInteractionTests
         string id,
         string answer,
         IReadOnlySet<SkillLevel>? levels = null,
-        IReadOnlySet<QuestionCategory>? categories = null) => new()
+        IReadOnlySet<QuestionCategory>? categories = null,
+        QuestionType type = QuestionType.SingleChoice) => new()
     {
         Id = id,
-        Type = QuestionType.SingleChoice,
+        Type = type,
         Text = "测试题目",
-        Options = new Dictionary<string, string> { ["A"] = "正确选项", ["B"] = "错误选项" },
+        Options = type == QuestionType.ShortAnswer
+            ? new Dictionary<string, string>()
+            : new Dictionary<string, string> { ["A"] = "选项 A", ["B"] = "选项 B" },
         Answer = answer,
         Levels = levels ?? new HashSet<SkillLevel> { SkillLevel.Level1 },
         Source = "通用",

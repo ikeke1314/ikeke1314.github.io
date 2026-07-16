@@ -19,10 +19,12 @@
       <TargetPath>exam_bank\PE 技能士题库.xlsx</TargetPath>
       <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
     </Content>
+    <Resource Include="Assets\AppIcon.ico" />
   </ItemGroup>
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
+    <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
     <TargetFramework>net8.0-windows</TargetFramework>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>

@@ -16,6 +16,22 @@ public sealed class DesktopLayoutTests
     }
 
     [Fact]
+    public void Application_EmbedsWindowAndExecutableIcon()
+    {
+        var project = ReadSource("src", "SkillExam.App", "SkillExam.App.csproj");
+        var window = ReadSource("src", "SkillExam.App", "MainWindow.xaml");
+        var icon = File.ReadAllBytes(Path.Combine(FindProjectRoot(), "src", "SkillExam.App", "Assets", "AppIcon.ico"));
+
+        Assert.Contains("<ApplicationIcon>Assets\\AppIcon.ico</ApplicationIcon>", project, StringComparison.Ordinal);
+        Assert.Contains("<Resource Include=\"Assets\\AppIcon.ico\" />", project, StringComparison.Ordinal);
+        Assert.Contains("Icon=\"/Assets/AppIcon.ico\"", window, StringComparison.Ordinal);
+        Assert.True(icon.Length > 6);
+        Assert.Equal(0, BitConverter.ToUInt16(icon, 0));
+        Assert.Equal(1, BitConverter.ToUInt16(icon, 2));
+        Assert.True(BitConverter.ToUInt16(icon, 4) >= 7);
+    }
+
+    [Fact]
     public void HomeView_UsesLegacyDesktopOrderWithoutDashboardLayout()
     {
         var xaml = ReadSource("src", "SkillExam.App", "Views", "HomeView.xaml");
@@ -58,6 +74,14 @@ public sealed class DesktopLayoutTests
         AssertInOrder(xaml, "上一题", "确认答案", "查看答案", "下一题", "ExitButtonText", "交卷");
         Assert.Contains("<RadioButton", optionXaml, StringComparison.Ordinal);
         Assert.Contains("<CheckBox", optionXaml, StringComparison.Ordinal);
+        Assert.Contains(
+            "<RadioButton IsChecked=\"{Binding Option.IsSelected, ElementName=Root, Mode=OneWay}\"",
+            optionXaml,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "<CheckBox IsChecked=\"{Binding Option.IsSelected, ElementName=Root, Mode=TwoWay}\"",
+            optionXaml,
+            StringComparison.Ordinal);
         Assert.DoesNotContain("CardBorderStyle", optionXaml, StringComparison.Ordinal);
         Assert.Contains("ItemsSource=\"{Binding Groups, ElementName=Root}\"", navigatorXaml, StringComparison.Ordinal);
         Assert.Contains("<WrapPanel Orientation=\"Horizontal\"", navigatorXaml, StringComparison.Ordinal);

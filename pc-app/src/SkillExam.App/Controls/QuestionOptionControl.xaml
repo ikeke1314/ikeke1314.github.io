@@ -34,7 +34,7 @@
     </UserControl.Resources>
 
     <Grid Margin="0,2">
-        <RadioButton IsChecked="{Binding Option.IsSelected, ElementName=Root, Mode=TwoWay}"
+        <RadioButton IsChecked="{Binding Option.IsSelected, ElementName=Root, Mode=OneWay}"
                      Command="{Binding Command, ElementName=Root}"
                      CommandParameter="{Binding Option, ElementName=Root}"
                      ContentTemplate="{StaticResource OptionContentTemplate}"
