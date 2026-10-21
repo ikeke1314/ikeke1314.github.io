@@ -22,9 +22,25 @@ public sealed class SettingsRepository(SqliteDatabase database) : ISettingsRepos
             return new AppSettings();
         }
 
-        var settings = JsonSerializer.Deserialize<AppSettings>(value, JsonOptions) ?? new AppSettings();
-        using var document = JsonDocument.Parse(value);
-        if (!document.RootElement.TryGetProperty("autoNextDelaySettingsVersion", out _))
+        AppSettings settings;
+        bool hasDelayVersion;
+        try
+        {
+            settings = JsonSerializer.Deserialize<AppSettings>(value, JsonOptions) ?? new AppSettings();
+            using var document = JsonDocument.Parse(value);
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                throw new JsonException("设置数据不是 JSON 对象。");
+            }
+            hasDelayVersion = document.RootElement.TryGetProperty("autoNextDelaySettingsVersion", out _);
+        }
+        catch (JsonException)
+        {
+            // 设置数据损坏时回退默认值，避免每次启动都因设置解析失败而不可用。
+            return new AppSettings();
+        }
+
+        if (!hasDelayVersion)
         {
             // V3.1 短期版本的默认值是 1.5 秒；只迁移该默认值，保留用户主动选择的其他延迟。
             var migratedDelay = settings.AutoNextDelayMilliseconds == 1500

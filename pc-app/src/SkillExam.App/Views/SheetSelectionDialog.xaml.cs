@@ -19,8 +19,10 @@ public partial class SheetSelectionDialog : Window
         var previous = previousSelection is { Count: > 0 }
             ? previousSelection.ToHashSet(StringComparer.OrdinalIgnoreCase)
             : null;
+        // 换题库时上一次的 Sheet 选择通常完全不匹配，此时回退到题库默认勾选。
+        var hasPreviousMatch = previous is not null && sheets.Any(sheet => previous.Contains(sheet.Name));
         Choices = new ObservableCollection<SheetChoice>(sheets.Select(sheet =>
-            new SheetChoice(sheet.Name, previous?.Contains(sheet.Name) ?? sheet.IsSelectedByDefault)));
+            new SheetChoice(sheet.Name, hasPreviousMatch ? previous!.Contains(sheet.Name) : sheet.IsSelectedByDefault)));
         DataContext = this;
     }
 

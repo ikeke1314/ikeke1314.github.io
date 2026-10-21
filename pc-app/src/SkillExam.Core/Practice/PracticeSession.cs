@@ -22,16 +22,19 @@ public sealed class PracticeSession
 
         Questions = questions;
         _answerEvaluator = answerEvaluator;
-        CurrentIndex = snapshot?.CurrentQuestionId is null
+        var resumableSnapshot = snapshot is not null && HasCompletedAllQuestions(questions, snapshot, answerEvaluator)
+            ? null
+            : snapshot;
+        CurrentIndex = resumableSnapshot?.CurrentQuestionId is null
             ? 0
-            : Math.Max(0, questions.ToList().FindIndex(question => question.Id == snapshot.CurrentQuestionId));
-        if (snapshot is not null)
+            : Math.Max(0, questions.ToList().FindIndex(question => question.Id == resumableSnapshot.CurrentQuestionId));
+        if (resumableSnapshot is not null)
         {
-            foreach (var answer in snapshot.Answers)
+            foreach (var answer in resumableSnapshot.Answers)
             {
                 _answers[answer.Key] = answer.Value;
             }
-            _pendingRetryQuestionIds.UnionWith(snapshot.PendingRetryQuestionIds);
+            _pendingRetryQuestionIds.UnionWith(resumableSnapshot.PendingRetryQuestionIds);
         }
     }
 
@@ -86,6 +89,13 @@ public sealed class PracticeSession
         return true;
     }
 
+    public void Restart()
+    {
+        _answers.Clear();
+        _pendingRetryQuestionIds.Clear();
+        CurrentIndex = 0;
+    }
+
     public PracticeSessionSnapshot CreateSnapshot(
         string sessionId,
         IReadOnlyList<SkillLevel> levels,
@@ -102,4 +112,11 @@ public sealed class PracticeSession
         PendingRetryQuestionIds = new HashSet<string>(_pendingRetryQuestionIds),
         UpdatedAt = updatedAt
     };
+
+    private static bool HasCompletedAllQuestions(
+        IReadOnlyList<Question> questions,
+        PracticeSessionSnapshot snapshot,
+        IAnswerEvaluator answerEvaluator) => questions.All(question =>
+            snapshot.Answers.TryGetValue(question.Id, out var answer) &&
+            answerEvaluator.Evaluate(question, answer).IsCorrect);
 }

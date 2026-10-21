@@ -8,8 +8,8 @@
         <TextBlock Text="{Binding DialogTitle}" Style="{StaticResource SectionTitleTextStyle}" />
         <TextBlock Grid.Row="1" Text="{Binding Message}" Style="{StaticResource BodyTextStyle}" Margin="0,16,0,22" VerticalAlignment="Center" />
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button x:Name="CancelButton" Content="取消" Click="CancelButton_OnClick" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,10,0" />
-            <Button x:Name="ConfirmButton" Content="确认" Click="ConfirmButton_OnClick" Style="{StaticResource PrimaryButtonStyle}" />
+            <Button x:Name="CancelButton" Content="取消" Click="CancelButton_OnClick" IsCancel="True" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,10,0" />
+            <Button x:Name="ConfirmButton" Content="确认" Click="ConfirmButton_OnClick" IsDefault="True" Style="{StaticResource PrimaryButtonStyle}" />
         </StackPanel>
     </Grid>
 </Window>

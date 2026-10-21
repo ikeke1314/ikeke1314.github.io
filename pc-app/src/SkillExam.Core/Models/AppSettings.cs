@@ -14,7 +14,6 @@ public sealed record AppSettings
     public int SpeechRate { get; init; }
     public int AutoNextDelayMilliseconds { get; init; } = DefaultAutoNextDelayMilliseconds;
     public int AutoNextDelaySettingsVersion { get; init; } = CurrentAutoNextDelaySettingsVersion;
-    public bool ReduceMotion { get; init; }
 
     public static int NormalizeAutoNextDelayMilliseconds(int value) =>
         Math.Clamp(value, MinimumAutoNextDelayMilliseconds, MaximumAutoNextDelayMilliseconds);

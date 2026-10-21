@@ -60,9 +60,6 @@
                         <TextBlock Grid.Column="2" Text="{Binding AutoNextDelayDisplay}" Style="{StaticResource BodyTextStyle}"
                                    HorizontalAlignment="Right" VerticalAlignment="Center" />
                     </Grid>
-                    <CheckBox Content="减少动画" IsChecked="{Binding ReduceMotion}" Style="{StaticResource DesktopCheckBoxStyle}"
-                              Margin="0,12,0,0" />
-                    <TextBlock Text="开启后避免非必要的过渡动画。" Style="{StaticResource CaptionTextStyle}" Margin="25,3,0,0" />
                 </StackPanel>
             </Grid>
         </Border>
@@ -79,6 +76,8 @@
                         <Button Content="查看数据目录" Command="{Binding OpenDataDirectoryCommand}"
                                 Style="{StaticResource CompactButtonStyle}" Margin="0,0,8,0" />
                         <Button Content="备份数据库" Command="{Binding BackupCommand}"
+                                Style="{StaticResource CompactButtonStyle}" Margin="0,0,8,0" />
+                        <Button Content="迁移旧版数据" Command="{Binding MigrateLegacyCommand}"
                                 Style="{StaticResource CompactButtonStyle}" Margin="0,0,8,0" />
                         <Button Content="恢复默认设置" Command="{Binding ResetCommand}"
                                 Style="{StaticResource CompactButtonStyle}" />

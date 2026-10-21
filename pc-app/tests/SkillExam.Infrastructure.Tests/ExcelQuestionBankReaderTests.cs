@@ -87,6 +87,42 @@ public sealed class ExcelQuestionBankReaderTests
         }
     }
 
+    [Fact]
+    public async Task DuplicateRows_AreDeduplicatedWithWarning()
+    {
+        var path = CreateWorkbook(workbook =>
+        {
+            var sheet = workbook.AddWorksheet("重复库");
+            var columns = new[] { "考题类型", "题目", "选项A", "选项B", "答案", "来源", "一级" };
+            for (var index = 0; index < columns.Length; index++)
+            {
+                sheet.Cell(4, index + 1).Value = columns[index];
+            }
+            foreach (var row in new[] { 5, 6 })
+            {
+                sheet.Cell(row, 1).Value = "单选题";
+                sheet.Cell(row, 2).Value = "重复题目";
+                sheet.Cell(row, 3).Value = "是";
+                sheet.Cell(row, 4).Value = "否";
+                sheet.Cell(row, 5).Value = "A";
+                sheet.Cell(row, 6).Value = "重复库";
+                sheet.Cell(row, 7).Value = "√";
+            }
+        });
+        try
+        {
+            var result = await _reader.ReadAsync(path);
+
+            Assert.Single(result.Questions);
+            Assert.Contains(result.Issues, issue =>
+                issue.Severity == QuestionBankIssueSeverity.Warning && issue.Message.Contains("重复", StringComparison.Ordinal));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     private static string CreateWorkbook(Action<XLWorkbook> configure)
     {
         var path = Path.Combine(Path.GetTempPath(), $"skill-exam-{Guid.NewGuid():N}.xlsx");

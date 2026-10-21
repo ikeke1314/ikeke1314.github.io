@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using SkillExam.Core.Abstractions;
@@ -91,7 +92,7 @@ public sealed class ProgressRepository(SqliteDatabase database) : IProgressRepos
         var questionIdsJson = reader.GetString(1);
         var currentQuestionId = reader.IsDBNull(2) ? null : reader.GetString(2);
         var pendingRetryJson = reader.GetString(3);
-        var updatedAt = DateTimeOffset.Parse(reader.GetString(4));
+        var updatedAt = DateTimeOffset.Parse(reader.GetString(4), CultureInfo.InvariantCulture);
         var answers = new Dictionary<string, string>();
         await reader.DisposeAsync();
         var answerCommand = connection.CreateCommand();

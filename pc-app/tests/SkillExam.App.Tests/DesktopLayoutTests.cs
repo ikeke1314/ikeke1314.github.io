@@ -36,7 +36,7 @@ public sealed class DesktopLayoutTests
     {
         var xaml = ReadSource("src", "SkillExam.App", "Views", "HomeView.xaml");
 
-        Assert.Contains("技能士理论考核模拟系统 V3.1", xaml, StringComparison.Ordinal);
+        Assert.Contains("技能士理论考核模拟系统 V3.1.2", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("UniformGrid", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("ScrollViewer", xaml, StringComparison.Ordinal);
         Assert.DoesNotContain("CardBorderStyle", xaml, StringComparison.Ordinal);
@@ -71,7 +71,9 @@ public sealed class DesktopLayoutTests
 
         Assert.Contains("Width=\"300\"", xaml, StringComparison.Ordinal);
         Assert.Contains("QuestionNavigator", xaml, StringComparison.Ordinal);
-        AssertInOrder(xaml, "上一题", "确认答案", "查看答案", "下一题", "ExitButtonText", "交卷");
+        AssertInOrder(xaml, "上一题", "确认答案", "查看答案", "下一题", "重新练习", "ExitButtonText", "交卷");
+        Assert.Contains("Command=\"{Binding RestartPracticeCommand}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Binding IsPractice", xaml, StringComparison.Ordinal);
         Assert.Contains("<RadioButton", optionXaml, StringComparison.Ordinal);
         Assert.Contains("<CheckBox", optionXaml, StringComparison.Ordinal);
         Assert.Contains(

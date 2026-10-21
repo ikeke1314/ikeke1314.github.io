@@ -7,7 +7,7 @@ namespace SkillExam.Infrastructure.Speech;
 
 public sealed class SystemSpeechService : ISpeechService
 {
-    private readonly SpeechSynthesizer _synthesizer = new();
+    private readonly SpeechSynthesizer? _synthesizer;
     private readonly object _sync = new();
     private TaskCompletionSource? _currentCompletion;
     private Prompt? _currentPrompt;
@@ -15,7 +15,16 @@ public sealed class SystemSpeechService : ISpeechService
 
     public SystemSpeechService()
     {
-        _synthesizer.SpeakCompleted += OnSpeakCompleted;
+        try
+        {
+            _synthesizer = new SpeechSynthesizer();
+            _synthesizer.SpeakCompleted += OnSpeakCompleted;
+        }
+        catch (Exception)
+        {
+            // 系统缺少语音组件时降级为静默模式，不能让整个应用启动失败。
+            _synthesizer = null;
+        }
     }
 
     public IReadOnlyList<SpeechVoice> GetVoices()
@@ -23,6 +32,10 @@ public sealed class SystemSpeechService : ISpeechService
         lock (_sync)
         {
             ThrowIfDisposed();
+            if (_synthesizer is null)
+            {
+                return [];
+            }
             return _synthesizer.GetInstalledVoices()
                 .Where(voice => voice.Enabled)
                 .Select(voice => new SpeechVoice(
@@ -46,6 +59,10 @@ public sealed class SystemSpeechService : ISpeechService
         lock (_sync)
         {
             ThrowIfDisposed();
+            if (_synthesizer is null)
+            {
+                throw new InvalidOperationException("系统语音不可用。");
+            }
             CancelCore();
             SelectVoice(voiceName);
             _synthesizer.Rate = Math.Clamp(rate, -10, 10);
@@ -78,14 +95,21 @@ public sealed class SystemSpeechService : ISpeechService
                 return;
             }
             CancelCore();
-            _synthesizer.SpeakCompleted -= OnSpeakCompleted;
-            _synthesizer.Dispose();
+            if (_synthesizer is not null)
+            {
+                _synthesizer.SpeakCompleted -= OnSpeakCompleted;
+                _synthesizer.Dispose();
+            }
             _disposed = true;
         }
     }
 
     private void SelectVoice(string? requestedVoice)
     {
+        if (_synthesizer is null)
+        {
+            return;
+        }
         var voices = _synthesizer.GetInstalledVoices().Where(voice => voice.Enabled).ToArray();
         var selected = !string.IsNullOrWhiteSpace(requestedVoice)
             ? voices.FirstOrDefault(voice => voice.VoiceInfo.Name.Equals(requestedVoice, StringComparison.OrdinalIgnoreCase))
@@ -100,7 +124,7 @@ public sealed class SystemSpeechService : ISpeechService
 
     private void CancelCore()
     {
-        _synthesizer.SpeakAsyncCancelAll();
+        _synthesizer?.SpeakAsyncCancelAll();
         _currentPrompt = null;
         _currentCompletion?.TrySetCanceled();
         _currentCompletion = null;

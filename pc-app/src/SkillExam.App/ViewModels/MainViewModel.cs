@@ -74,6 +74,7 @@ public sealed partial class MainViewModel : ObservableObject
             _settings = await _settingsRepository.GetAsync();
             var executableDirectory = AppContext.BaseDirectory;
             if (HasLegacyFiles(executableDirectory) &&
+                !await _legacyMigrator.IsMigratedAsync() &&
                 await _dialogs.ConfirmAsync("发现旧版数据", "检测到程序旁存在旧版配置、错题或练习进度，是否先备份并迁移？", "迁移"))
             {
                 await MigrateFromDirectoryAsync(executableDirectory);
@@ -113,13 +114,22 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
-    public async Task PrepareForShutdownAsync()
+    public async Task<bool> PrepareForShutdownAsync()
     {
         if (CurrentPage is QuestionSessionViewModel session)
         {
+            if (session.IsExam && !session.IsFinished &&
+                !await _dialogs.ConfirmAsync(
+                    "退出考试",
+                    "考试仍在进行中，关闭窗口将按当前答案交卷。确定关闭吗？",
+                    "交卷并关闭"))
+            {
+                return false;
+            }
+
             try
             {
-                await session.StopAsync();
+                await session.CompleteForShutdownAsync();
             }
             catch (Exception exception)
             {
@@ -138,6 +148,7 @@ public sealed partial class MainViewModel : ObservableObject
         {
             _speechService.Cancel();
         }
+        return true;
     }
 
     private void ShowHome()
@@ -149,8 +160,7 @@ public sealed partial class MainViewModel : ObservableObject
             StartExamAsync,
             ShowPracticeAsync,
             ShowErrorBookAsync,
-            ShowSettings,
-            MigrateLegacyAsync);
+            ShowSettings);
     }
 
     private async Task LoadQuestionBankAsync()
@@ -166,8 +176,13 @@ public sealed partial class MainViewModel : ObservableObject
         {
             var sheets = await _questionBankReader.GetSheetsAsync(path);
             var selected = await _dialogs.SelectSheetsAsync(sheets, _settings.SelectedSheets);
-            if (selected is null || selected.Count == 0)
+            if (selected is null)
             {
+                return;
+            }
+            if (selected.Count == 0)
+            {
+                await _dialogs.ShowMessageAsync("未选择 Sheet", "请至少勾选一个工作表后再加载。");
                 return;
             }
             await LoadQuestionBankPathAsync(path, selected, showIssues: true);
@@ -175,7 +190,11 @@ public sealed partial class MainViewModel : ObservableObject
         catch (Exception exception)
         {
             _logger.Error(exception, "题库加载失败，文件 {FileName}", Path.GetFileName(path));
-            BankState.SetFailure("题库加载失败");
+            // 加载失败时保留当前正在使用的题库，避免用户因选错文件而丢失可用题库。
+            if (!BankState.IsLoaded)
+            {
+                BankState.SetFailure("题库加载失败");
+            }
             await _dialogs.ShowMessageAsync("题库加载失败", "无法读取该 Excel 文件。请确认文件未损坏、格式为 .xlsx/.xls，并查看日志摘要。");
         }
         finally
@@ -190,13 +209,24 @@ public sealed partial class MainViewModel : ObservableObject
         var result = await _questionBankReader.ReadAsync(path, selectedSheets);
         if (!result.HasUsableQuestions)
         {
-            BankState.SetFailure("题库没有可用题目");
+            if (!BankState.IsLoaded)
+            {
+                BankState.SetFailure("题库没有可用题目");
+            }
             await _dialogs.ShowErrorSummaryAsync("题库不可用", "没有导入任何有效题目。", result.Issues);
             return;
         }
         BankState.SetLoaded(path, result);
         _settings = _settings with { LastQuestionBankPath = path, SelectedSheets = result.LoadedSheets };
-        await _settingsRepository.SaveAsync(_settings);
+        try
+        {
+            await _settingsRepository.SaveAsync(_settings);
+        }
+        catch (Exception exception)
+        {
+            // 题库已经加载成功，不应因为设置保存失败而丢弃当前题库。
+            _logger.Error(exception, "保存题库设置失败");
+        }
         if (showIssues && result.Issues.Count > 0)
         {
             await _dialogs.ShowErrorSummaryAsync(
@@ -323,6 +353,7 @@ public sealed partial class MainViewModel : ObservableObject
                 _settings = settings;
                 return Task.CompletedTask;
             },
+            MigrateLegacyAsync,
             ShowHome);
     }
 
@@ -361,14 +392,15 @@ public sealed partial class MainViewModel : ObservableObject
             practiceLevels,
             practiceCategories);
 
-    private async Task MigrateLegacyAsync()
+    private async Task<AppSettings> MigrateLegacyAsync()
     {
         var directory = await _dialogs.PickFolderAsync("选择包含旧版 JSON 的目录");
         if (directory is not null)
         {
             await MigrateFromDirectoryAsync(directory);
-            _settings = await _settingsRepository.GetAsync();
         }
+        _settings = await _settingsRepository.GetAsync();
+        return _settings;
     }
 
     private async Task MigrateFromDirectoryAsync(string directory)
@@ -380,7 +412,7 @@ public sealed partial class MainViewModel : ObservableObject
             var result = await _legacyMigrator.MigrateAsync(directory);
             var message = result.WasAlreadyMigrated
                 ? "该数据库已完成旧版数据迁移，无需重复导入。"
-                : $"迁移错题作答 {result.ErrorAttemptsMigrated}/{result.ErrorAttemptsRead} 条，练习进度 {result.PracticeSnapshotsMigrated} 组。\n备份目录：{result.BackupDirectory ?? "未创建"}";
+                : $"迁移错题作答 {result.ErrorAttemptsMigrated}/{result.ErrorAttemptsRead} 条；旧练习进度已归档 {result.PracticeSnapshotsMigrated} 组（旧格式无法自动续练）。\n备份目录：{result.BackupDirectory ?? "未创建"}";
             if (result.Warnings.Count > 0)
             {
                 message += $"\n警告：{string.Join("；", result.Warnings)}";
@@ -406,7 +438,9 @@ public sealed partial class MainViewModel : ObservableObject
         {
             return questions.OrderBy(question => question.Id, StringComparer.Ordinal).ToArray();
         }
-        var byId = questions.ToDictionary(question => question.Id);
+        var byId = questions
+            .DistinctBy(question => question.Id)
+            .ToDictionary(question => question.Id);
         var restored = snapshot.QuestionIds.Where(byId.ContainsKey).Select(id => byId[id]).ToList();
         restored.AddRange(questions.Where(question => !snapshot.QuestionIds.Contains(question.Id)).OrderBy(question => question.Id));
         return restored;
