@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SkillExam.App.Services;
@@ -17,7 +18,6 @@ public sealed partial class HomeViewModel : ObservableObject
     private readonly Func<SkillLevel, QuestionCategory?, Task> _showPractice;
     private readonly Func<Task> _showErrors;
     private readonly Action _showSettings;
-    private readonly Func<Task> _migrateLegacy;
 
     public HomeViewModel(
         QuestionBankState bankState,
@@ -26,8 +26,7 @@ public sealed partial class HomeViewModel : ObservableObject
         Func<SkillLevel, IReadOnlyList<QuestionCategory>, Task> startExam,
         Func<SkillLevel, QuestionCategory?, Task> showPractice,
         Func<Task> showErrors,
-        Action showSettings,
-        Func<Task> migrateLegacy)
+        Action showSettings)
     {
         BankState = bankState;
         _examGenerator = examGenerator;
@@ -36,18 +35,20 @@ public sealed partial class HomeViewModel : ObservableObject
         _showPractice = showPractice;
         _showErrors = showErrors;
         _showSettings = showSettings;
-        _migrateLegacy = migrateLegacy;
         CategoryOptions = [
             new HomeCategoryOption("全部", null),
             .. QuestionCategoryExtensions.All.Select(category => new HomeCategoryOption(category.ToDisplayName(), category))
         ];
         SelectedCategory = CategoryOptions[0];
-        BankState.PropertyChanged += (_, _) => StartExamCommand.NotifyCanExecuteChanged();
+        PropertyChangedEventManager.AddHandler(BankState, OnBankStatePropertyChanged, string.Empty);
     }
 
     public QuestionBankState BankState { get; }
     public IReadOnlyList<SkillLevel> Levels => SkillLevelExtensions.All;
     public IReadOnlyList<HomeCategoryOption> CategoryOptions { get; }
+
+    private void OnBankStatePropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs eventArgs) =>
+        StartExamCommand.NotifyCanExecuteChanged();
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(RuleText))]
@@ -77,7 +78,4 @@ public sealed partial class HomeViewModel : ObservableObject
 
     [RelayCommand]
     private void ShowSettings() => _showSettings();
-
-    [RelayCommand]
-    private Task MigrateLegacyAsync() => _migrateLegacy();
 }

@@ -61,6 +61,202 @@ public sealed class ViewModelInteractionTests
     }
 
     [Fact]
+    public async Task MultipleChoice_ConfirmsAllSelectedOptionsTogether()
+    {
+        var questions = new[] { CreateQuestion("multiple", "AB", type: QuestionType.MultipleChoice) };
+        using var logger = new LoggerConfiguration().CreateLogger();
+        var viewModel = new QuestionSessionViewModel(
+            questions,
+            SessionMode.Practice,
+            new AnswerEvaluator(),
+            new MemoryErrorBookRepository(),
+            new MemoryProgressRepository(),
+            new SilentSpeechService(),
+            new ImmediateClock(),
+            new SilentDialogService(),
+            new AppSettings { AutoSpeechEnabled = false },
+            logger,
+            () => Task.CompletedTask,
+            practiceLevels: [SkillLevel.Level1],
+            practiceCategories: []);
+
+        viewModel.Options.Single(option => option.Key == "A").IsSelected = true;
+        viewModel.Options.Single(option => option.Key == "B").IsSelected = true;
+        await viewModel.ConfirmAnswerCommand.ExecuteAsync(null);
+
+        Assert.Equal(AnswerStatus.Correct, viewModel.FeedbackStatus);
+        Assert.Equal("回答正确", viewModel.FeedbackMessage);
+        Assert.All(viewModel.Options, option => Assert.True(option.IsSelected));
+        Assert.False(viewModel.CanAnswerCurrent);
+    }
+
+    [Fact]
+    public async Task TrueFalse_SelectsAndEvaluatesImmediately()
+    {
+        var questions = new[] { CreateQuestion("true-false", "A", type: QuestionType.TrueFalse) };
+        using var logger = new LoggerConfiguration().CreateLogger();
+        var viewModel = new QuestionSessionViewModel(
+            questions,
+            SessionMode.Practice,
+            new AnswerEvaluator(),
+            new MemoryErrorBookRepository(),
+            new MemoryProgressRepository(),
+            new SilentSpeechService(),
+            new ImmediateClock(),
+            new SilentDialogService(),
+            new AppSettings { AutoSpeechEnabled = false },
+            logger,
+            () => Task.CompletedTask,
+            practiceLevels: [SkillLevel.Level1],
+            practiceCategories: []);
+
+        await viewModel.SelectOptionCommand.ExecuteAsync(viewModel.Options.Single(option => option.Key == "A"));
+
+        Assert.Equal(AnswerStatus.Correct, viewModel.FeedbackStatus);
+        Assert.True(viewModel.Options.Single(option => option.Key == "A").IsCorrect);
+        Assert.False(viewModel.CanAnswerCurrent);
+    }
+
+    [Fact]
+    public async Task TrueFalse_AnswerSelectionIsRestoredWhenReturningToQuestion()
+    {
+        var questions = new[]
+        {
+            CreateTrueFalseQuestion("true-false-restore", "×"),
+            CreateQuestion("after-true-false", "A")
+        };
+        using var logger = new LoggerConfiguration().CreateLogger();
+        var viewModel = new QuestionSessionViewModel(
+            questions,
+            SessionMode.Practice,
+            new AnswerEvaluator(),
+            new MemoryErrorBookRepository(),
+            new MemoryProgressRepository(),
+            new SilentSpeechService(),
+            new ImmediateClock(),
+            new SilentDialogService(),
+            new AppSettings { AutoSpeechEnabled = false },
+            logger,
+            () => Task.CompletedTask,
+            practiceLevels: [SkillLevel.Level1],
+            practiceCategories: []);
+
+        await viewModel.SelectOptionCommand.ExecuteAsync(viewModel.Options.Single(option => option.Key == "A"));
+        Assert.True(viewModel.Options.Single(option => option.Key == "A").IsSelected);
+
+        await viewModel.NextCommand.ExecuteAsync(null);
+        await viewModel.PreviousCommand.ExecuteAsync(null);
+
+        Assert.True(viewModel.Options.Single(option => option.Key == "A").IsSelected);
+        Assert.False(viewModel.Options.Single(option => option.Key == "B").IsSelected);
+    }
+
+    [Fact]
+    public async Task ShortAnswer_DraftIsPreservedWhenLeavingQuestion()
+    {
+        var questions = new[]
+        {
+            CreateQuestion("short-draft-1", "答案一", type: QuestionType.ShortAnswer),
+            CreateQuestion("short-draft-2", "答案二", type: QuestionType.ShortAnswer)
+        };
+        using var logger = new LoggerConfiguration().CreateLogger();
+        var viewModel = new QuestionSessionViewModel(
+            questions,
+            SessionMode.Practice,
+            new AnswerEvaluator(),
+            new MemoryErrorBookRepository(),
+            new MemoryProgressRepository(),
+            new SilentSpeechService(),
+            new ImmediateClock(),
+            new SilentDialogService(),
+            new AppSettings { AutoSpeechEnabled = false },
+            logger,
+            () => Task.CompletedTask,
+            practiceLevels: [SkillLevel.Level1],
+            practiceCategories: []);
+
+        viewModel.AnswerText = "正在输入的答案";
+        await viewModel.NextCommand.ExecuteAsync(null);
+        await viewModel.PreviousCommand.ExecuteAsync(null);
+
+        Assert.Equal("正在输入的答案", viewModel.AnswerText);
+    }
+
+    [Fact]
+    public async Task ExamSession_CompleteForShutdownUsesDraftAndRecordsUnanswered()
+    {
+        var shortAnswer = CreateQuestion("exam-short", "标准答案", type: QuestionType.ShortAnswer);
+        var singleChoice = CreateQuestion("exam-single", "A");
+        var questions = new[] { shortAnswer, singleChoice };
+        var repository = new MemoryErrorBookRepository();
+        ExamResult? result = null;
+        using var logger = new LoggerConfiguration().CreateLogger();
+        var paper = new ExamPaper(
+            SkillLevel.Level1,
+            questions,
+            new Dictionary<QuestionType, IReadOnlyDictionary<SkillLevel, int>>(),
+            ExamBlueprint.MaximumScore,
+            ExamBlueprint.Duration);
+        var viewModel = new QuestionSessionViewModel(
+            questions,
+            SessionMode.Exam,
+            new AnswerEvaluator(),
+            repository,
+            new MemoryProgressRepository(),
+            new SilentSpeechService(),
+            new ImmediateClock(),
+            new SilentDialogService(),
+            new AppSettings { AutoSpeechEnabled = false },
+            logger,
+            () => Task.CompletedTask,
+            (examResult, _) =>
+            {
+                result = examResult;
+                return Task.CompletedTask;
+            },
+            paper);
+
+        viewModel.AnswerText = "标准答案";
+        await viewModel.CompleteForShutdownAsync();
+
+        Assert.True(viewModel.IsFinished);
+        Assert.NotNull(result);
+        Assert.Equal(10, result.Score);
+        Assert.Equal(1, result.UnansweredCount);
+        var attempt = Assert.Single(repository.Attempts);
+        Assert.Equal(singleChoice.Id, attempt.Question.Id);
+    }
+
+    [Fact]
+    public async Task ShortAnswer_RevealsReferenceAndEvaluatesEnteredText()
+    {
+        var questions = new[] { CreateQuestion("short-answer", "标准答案", type: QuestionType.ShortAnswer) };
+        using var logger = new LoggerConfiguration().CreateLogger();
+        var viewModel = new QuestionSessionViewModel(
+            questions,
+            SessionMode.Practice,
+            new AnswerEvaluator(),
+            new MemoryErrorBookRepository(),
+            new MemoryProgressRepository(),
+            new SilentSpeechService(),
+            new ImmediateClock(),
+            new SilentDialogService(),
+            new AppSettings { AutoSpeechEnabled = false },
+            logger,
+            () => Task.CompletedTask,
+            practiceLevels: [SkillLevel.Level1],
+            practiceCategories: []);
+
+        viewModel.AnswerText = "标准答案";
+        await viewModel.RevealAnswerCommand.ExecuteAsync(null);
+
+        Assert.True(viewModel.IsReferenceVisible);
+        Assert.Equal("标准答案", viewModel.ReferenceAnswer);
+        Assert.Equal(AnswerStatus.Correct, viewModel.FeedbackStatus);
+        Assert.False(viewModel.CanAnswerCurrent);
+    }
+
+    [Fact]
     public async Task SubmitExam_RecordsUnansweredQuestionsAndOffersThemForReview()
     {
         var questions = new[] { CreateQuestion("unanswered", "A") };
@@ -138,6 +334,92 @@ public sealed class ViewModelInteractionTests
     }
 
     [Fact]
+    public void CompletedPracticeSnapshot_OpensFreshAnswerableSession()
+    {
+        var questions = new[] { CreateQuestion("q1", "A"), CreateQuestion("q2", "A") };
+        var snapshot = new PracticeSessionSnapshot
+        {
+            SessionId = "completed-practice",
+            Levels = [SkillLevel.Level1],
+            Categories = [],
+            QuestionType = QuestionType.SingleChoice,
+            QuestionIds = questions.Select(question => question.Id).ToArray(),
+            CurrentQuestionId = questions[1].Id,
+            Answers = questions.ToDictionary(question => question.Id, _ => "A"),
+            PendingRetryQuestionIds = new HashSet<string>(),
+            UpdatedAt = DateTimeOffset.Parse("2026-07-17T00:00:00Z")
+        };
+        using var logger = new LoggerConfiguration().CreateLogger();
+
+        var viewModel = new QuestionSessionViewModel(
+            questions,
+            SessionMode.Practice,
+            new AnswerEvaluator(),
+            new MemoryErrorBookRepository(),
+            new MemoryProgressRepository(),
+            new SilentSpeechService(),
+            new ImmediateClock(),
+            new SilentDialogService(),
+            new AppSettings { AutoSpeechEnabled = false },
+            logger,
+            () => Task.CompletedTask,
+            practiceSnapshot: snapshot,
+            practiceLevels: [SkillLevel.Level1],
+            practiceCategories: []);
+
+        Assert.Equal(0, viewModel.CurrentIndex);
+        Assert.True(viewModel.CanAnswerCurrent);
+        Assert.All(viewModel.NavigatorItems, item => Assert.Equal(NavigationState.Unanswered, item.AnswerState));
+    }
+
+    [Fact]
+    public async Task RestartPractice_ClearsRedQuestionsAndPersistsEmptyProgress()
+    {
+        var questions = new[] { CreateQuestion("q1", "A"), CreateQuestion("q2", "A") };
+        var snapshot = new PracticeSessionSnapshot
+        {
+            SessionId = "incomplete-practice",
+            Levels = [SkillLevel.Level1],
+            Categories = [],
+            QuestionType = QuestionType.SingleChoice,
+            QuestionIds = questions.Select(question => question.Id).ToArray(),
+            CurrentQuestionId = questions[1].Id,
+            Answers = new Dictionary<string, string> { [questions[0].Id] = "B" },
+            PendingRetryQuestionIds = new HashSet<string> { questions[0].Id },
+            UpdatedAt = DateTimeOffset.Parse("2026-07-17T00:00:00Z")
+        };
+        var progressRepository = new MemoryProgressRepository();
+        using var logger = new LoggerConfiguration().CreateLogger();
+        var viewModel = new QuestionSessionViewModel(
+            questions,
+            SessionMode.Practice,
+            new AnswerEvaluator(),
+            new MemoryErrorBookRepository(),
+            progressRepository,
+            new SilentSpeechService(),
+            new ImmediateClock(),
+            new SilentDialogService(confirm: true),
+            new AppSettings { AutoSpeechEnabled = false },
+            logger,
+            () => Task.CompletedTask,
+            practiceSnapshot: snapshot,
+            practiceLevels: [SkillLevel.Level1],
+            practiceCategories: []);
+
+        Assert.Equal(NavigationState.Incorrect, viewModel.NavigatorItems[0].AnswerState);
+
+        await viewModel.RestartPracticeCommand.ExecuteAsync(null);
+
+        Assert.Equal(0, viewModel.CurrentIndex);
+        Assert.True(viewModel.CanAnswerCurrent);
+        Assert.All(viewModel.NavigatorItems, item => Assert.Equal(NavigationState.Unanswered, item.AnswerState));
+        Assert.NotNull(progressRepository.SavedSnapshot);
+        Assert.Empty(progressRepository.SavedSnapshot.Answers);
+        Assert.Empty(progressRepository.SavedSnapshot.PendingRetryQuestionIds);
+        Assert.Equal(questions[0].Id, progressRepository.SavedSnapshot.CurrentQuestionId);
+    }
+
+    [Fact]
     public async Task SettingsSave_PersistsAutoNextDelay()
     {
         var repository = new MemorySettingsRepository();
@@ -159,6 +441,7 @@ public sealed class ViewModelInteractionTests
                 savedSettings = settings;
                 return Task.CompletedTask;
             },
+            () => Task.FromResult(new AppSettings()),
             () => navigatedBack = true);
 
         Assert.Equal(1.0, viewModel.AutoNextDelaySeconds);
@@ -191,16 +474,31 @@ public sealed class ViewModelInteractionTests
         string id,
         string answer,
         IReadOnlySet<SkillLevel>? levels = null,
-        IReadOnlySet<QuestionCategory>? categories = null) => new()
+        IReadOnlySet<QuestionCategory>? categories = null,
+        QuestionType type = QuestionType.SingleChoice) => new()
     {
         Id = id,
-        Type = QuestionType.SingleChoice,
+        Type = type,
         Text = "测试题目",
-        Options = new Dictionary<string, string> { ["A"] = "正确选项", ["B"] = "错误选项" },
+        Options = type == QuestionType.ShortAnswer
+            ? new Dictionary<string, string>()
+            : new Dictionary<string, string> { ["A"] = "选项 A", ["B"] = "选项 B" },
         Answer = answer,
         Levels = levels ?? new HashSet<SkillLevel> { SkillLevel.Level1 },
         Source = "通用",
         Categories = categories ?? new HashSet<QuestionCategory>()
+    };
+
+    private static Question CreateTrueFalseQuestion(string id, string answer) => new()
+    {
+        Id = id,
+        Type = QuestionType.TrueFalse,
+        Text = "判断题",
+        Options = new Dictionary<string, string> { ["A"] = "√", ["B"] = "×" },
+        Answer = answer,
+        Levels = new HashSet<SkillLevel> { SkillLevel.Level1 },
+        Source = "通用",
+        Categories = new HashSet<QuestionCategory>()
     };
 
     private sealed class MemoryErrorBookRepository : IErrorBookRepository
@@ -217,7 +515,13 @@ public sealed class ViewModelInteractionTests
 
     private sealed class MemoryProgressRepository : IProgressRepository
     {
-        public Task SaveAsync(PracticeSessionSnapshot snapshot, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public PracticeSessionSnapshot? SavedSnapshot { get; private set; }
+
+        public Task SaveAsync(PracticeSessionSnapshot snapshot, CancellationToken cancellationToken = default)
+        {
+            SavedSnapshot = snapshot;
+            return Task.CompletedTask;
+        }
         public Task<PracticeSessionSnapshot?> GetLatestAsync(IReadOnlyCollection<SkillLevel> levels, IReadOnlyCollection<QuestionCategory> categories, QuestionType questionType, CancellationToken cancellationToken = default) => Task.FromResult<PracticeSessionSnapshot?>(null);
     }
 

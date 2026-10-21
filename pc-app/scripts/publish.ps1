@@ -1,3 +1,4 @@
+#Requires -Version 7.0
 [CmdletBinding()]
 param(
     [ValidateSet('Release')]
@@ -21,7 +22,7 @@ if (-not $outputRootFull.StartsWith($pcAppPrefix, [System.StringComparison]::Ord
     throw "发布目录必须位于 pc-app 内：$outputRootFull"
 }
 
-$version = 'V3.1'
+$version = 'V3.1.2'
 $solution = Join-Path $pcAppRoot 'SkillExam.sln'
 $project = Join-Path $pcAppRoot 'src\SkillExam.App\SkillExam.App.csproj'
 $portableDirectory = Join-Path $outputRootFull "portable\SkillExam-$version-win-x64"

@@ -78,6 +78,21 @@ public sealed class ExcelQuestionBankReader : IQuestionBankReader
             }
         }
 
+        var duplicateCount = questions.Count - questions.Select(question => question.Id).Distinct(StringComparer.Ordinal).Count();
+        if (duplicateCount > 0)
+        {
+            questions = questions
+                .GroupBy(question => question.Id, StringComparer.Ordinal)
+                .Select(group => group.First())
+                .ToList();
+            issues.Add(new QuestionBankIssue(
+                string.Empty,
+                null,
+                "题目",
+                $"检测到 {duplicateCount} 条重复题目，已按题目 ID 去重。",
+                QuestionBankIssueSeverity.Warning));
+        }
+
         if (loadedSheets.Count == 0)
         {
             issues.Add(new QuestionBankIssue(string.Empty, null, "Sheet", "没有可加载的 Sheet；名称包含“透视”的 Sheet 默认排除。"));

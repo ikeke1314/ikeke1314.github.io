@@ -19,8 +19,9 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly IDialogService _dialogs;
     private readonly ILogger _logger;
     private readonly Func<AppSettings, Task> _saved;
+    private readonly Func<Task<AppSettings>> _migrateLegacy;
     private readonly Action _back;
-    private readonly AppSettings _original;
+    private AppSettings _original;
 
     public SettingsViewModel(
         AppSettings settings,
@@ -31,6 +32,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         IDialogService dialogs,
         ILogger logger,
         Func<AppSettings, Task> saved,
+        Func<Task<AppSettings>> migrateLegacy,
         Action back)
     {
         _original = settings;
@@ -41,12 +43,12 @@ public sealed partial class SettingsViewModel : ObservableObject
         _dialogs = dialogs;
         _logger = logger;
         _saved = saved;
+        _migrateLegacy = migrateLegacy;
         _back = back;
         AutoSpeechEnabled = settings.AutoSpeechEnabled;
         VoiceName = settings.VoiceName;
         SpeechRate = settings.SpeechRate;
         AutoNextDelaySeconds = AppSettings.NormalizeAutoNextDelayMilliseconds(settings.AutoNextDelayMilliseconds) / 1000d;
-        ReduceMotion = settings.ReduceMotion;
         Voices = new ObservableCollection<SpeechVoice>(_speechService.GetVoices());
         if (string.IsNullOrWhiteSpace(VoiceName))
         {
@@ -65,7 +67,6 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string? _voiceName;
     [ObservableProperty] private int _speechRate;
     [ObservableProperty] private double _autoNextDelaySeconds;
-    [ObservableProperty] private bool _reduceMotion;
     [ObservableProperty] private bool _isBusy;
 
     partial void OnAutoNextDelaySecondsChanged(double value) => OnPropertyChanged(nameof(AutoNextDelayDisplay));
@@ -81,8 +82,7 @@ public sealed partial class SettingsViewModel : ObservableObject
                 VoiceName = VoiceName,
                 SpeechRate = Math.Clamp(SpeechRate, -10, 10),
                 AutoNextDelayMilliseconds = AppSettings.NormalizeAutoNextDelayMilliseconds(
-                    (int)Math.Round(AutoNextDelaySeconds * 1000, MidpointRounding.AwayFromZero)),
-                ReduceMotion = ReduceMotion
+                    (int)Math.Round(AutoNextDelaySeconds * 1000, MidpointRounding.AwayFromZero))
             };
             await _repository.SaveAsync(settings);
             await _saved(settings);
@@ -125,7 +125,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     [RelayCommand]
     private async Task ResetAsync()
     {
-        if (!await _dialogs.ConfirmAsync("恢复默认设置", "将恢复自动读题、默认语速、跳题延迟和动画设置，题库路径与用户数据不会删除。", "恢复"))
+        if (!await _dialogs.ConfirmAsync("恢复默认设置", "将恢复自动读题、默认语速和跳题延迟，题库路径与用户数据不会删除。", "恢复"))
         {
             return;
         }
@@ -138,7 +138,21 @@ public sealed partial class SettingsViewModel : ObservableObject
         VoiceName = Voices.FirstOrDefault(voice => voice.IsChinese)?.Name ?? Voices.FirstOrDefault()?.Name;
         SpeechRate = defaults.SpeechRate;
         AutoNextDelaySeconds = defaults.AutoNextDelayMilliseconds / 1000d;
-        ReduceMotion = defaults.ReduceMotion;
+    }
+
+    [RelayCommand]
+    private async Task MigrateLegacyAsync()
+    {
+        try
+        {
+            // 迁移会更新数据库中的设置，这里同步刷新原始快照，避免随后保存设置时覆盖迁移结果。
+            _original = await _migrateLegacy();
+        }
+        catch (Exception exception)
+        {
+            _logger.Error(exception, "迁移旧版数据失败");
+            await _dialogs.ShowMessageAsync("迁移失败", "旧版数据未能迁移，请查看日志后重试。");
+        }
     }
 
     [RelayCommand]

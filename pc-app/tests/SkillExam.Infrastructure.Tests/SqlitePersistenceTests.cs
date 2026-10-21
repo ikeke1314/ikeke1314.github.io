@@ -114,6 +114,30 @@ public sealed class SqlitePersistenceTests : IDisposable
     }
 
     [Theory]
+    [InlineData("not-json")]
+    [InlineData("null")]
+    [InlineData("[]")]
+    public async Task CorruptSettings_FallBackToDefaults(string storedValue)
+    {
+        var database = CreateDatabase();
+        await database.InitializeAsync();
+        await using (var connection = await database.OpenConnectionAsync())
+        {
+            var command = connection.CreateCommand();
+            command.CommandText = "INSERT INTO settings(key, value, updated_at) VALUES ('app_settings', $value, $updatedAt);";
+            command.Parameters.AddWithValue("$value", storedValue);
+            command.Parameters.AddWithValue("$updatedAt", DateTimeOffset.UtcNow.ToString("O"));
+            await command.ExecuteNonQueryAsync();
+        }
+
+        var restoredSettings = await new SettingsRepository(database).GetAsync();
+
+        Assert.True(restoredSettings.AutoSpeechEnabled);
+        Assert.Equal(AppSettings.DefaultAutoNextDelayMilliseconds, restoredSettings.AutoNextDelayMilliseconds);
+        Assert.Null(restoredSettings.LastQuestionBankPath);
+    }
+
+    [Theory]
     [InlineData(1500, 1000)]
     [InlineData(2400, 2400)]
     [InlineData(5000, 3000)]

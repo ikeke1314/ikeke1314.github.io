@@ -90,6 +90,7 @@ public sealed partial class QuestionSessionViewModel : ObservableObject
     private CancellationTokenSource? _autoNextCancellation;
     private DateTimeOffset _startedAt;
     private bool _finished;
+    private bool _isLoadingQuestion;
 
     public QuestionSessionViewModel(
         IReadOnlyList<Question> questions,
@@ -173,6 +174,7 @@ public sealed partial class QuestionSessionViewModel : ObservableObject
     public bool IsExam => Mode == SessionMode.Exam;
     public bool IsPractice => Mode == SessionMode.Practice;
     public bool IsErrorReview => Mode == SessionMode.ErrorReview;
+    public bool IsFinished => _finished;
     public bool IsShortAnswer => CurrentQuestion.Type == QuestionType.ShortAnswer;
     public bool IsMultipleChoice => CurrentQuestion.Type == QuestionType.MultipleChoice;
     public bool ShowsConfirmAnswer => IsMultipleChoice;
@@ -211,6 +213,16 @@ public sealed partial class QuestionSessionViewModel : ObservableObject
 
     partial void OnRemainingTimeChanged(TimeSpan value) => OnPropertyChanged(nameof(RemainingTimeText));
     partial void OnFeedbackMessageChanged(string value) => OnPropertyChanged(nameof(HasFeedback));
+
+    partial void OnAnswerTextChanged(string value)
+    {
+        // 简答题没有独立提交按钮，输入内容需要作为草稿保留，避免切题或交卷时丢失。
+        if (_isLoadingQuestion || !IsShortAnswer)
+        {
+            return;
+        }
+        _answers[CurrentQuestion.Id] = value;
+    }
 
     public Task StartAsync()
     {
@@ -267,6 +279,33 @@ public sealed partial class QuestionSessionViewModel : ObservableObject
 
     [RelayCommand]
     private Task NextAsync() => MoveToAsync(CurrentIndex + 1, isManual: true);
+
+    [RelayCommand]
+    private async Task RestartPracticeAsync()
+    {
+        if (!IsPractice || _finished)
+        {
+            return;
+        }
+        if (!await _dialogs.ConfirmAsync(
+                "重新练习",
+                "将清空当前专项练习的答案、红题状态和进度，并从第一题重新开始。",
+                "重新开始"))
+        {
+            return;
+        }
+
+        CancelAutoNext();
+        _speechService.Cancel();
+        _practiceSession!.Restart();
+        _answers.Clear();
+        _answerStatuses.Clear();
+        _lockedQuestionIds.Clear();
+        CurrentIndex = _practiceSession.CurrentIndex;
+        LoadCurrentQuestion();
+        await PersistPracticeSafelyAsync();
+        StartSpeechIfEnabled();
+    }
 
     [RelayCommand]
     private async Task ReadQuestionAsync()
@@ -334,13 +373,28 @@ public sealed partial class QuestionSessionViewModel : ObservableObject
         }
     }
 
+    public async Task CompleteForShutdownAsync()
+    {
+        if (IsExam && !_finished)
+        {
+            // 关闭窗口等同于“退出并交卷”，避免考试答案被静默丢弃。
+            await CompleteExamAsync(autoSubmitted: false);
+            return;
+        }
+        await StopAsync();
+    }
+
     private async Task EvaluateCurrentAsync(string? userAnswer)
     {
         if (_finished || !CanAnswerCurrent)
         {
             return;
         }
-        var evaluation = _answerEvaluator.Evaluate(CurrentQuestion, userAnswer);
+
+        // 数据库写入期间用户可能已经切题，后续 UI 状态必须以本次作答的题目为准。
+        var question = CurrentQuestion;
+        var questionIndex = CurrentIndex;
+        var evaluation = _answerEvaluator.Evaluate(question, userAnswer);
         if (evaluation.Status == AnswerStatus.Unanswered)
         {
             FeedbackStatus = AnswerStatus.Unanswered;
@@ -348,38 +402,41 @@ public sealed partial class QuestionSessionViewModel : ObservableObject
             return;
         }
 
-        _answers[CurrentQuestion.Id] = userAnswer ?? string.Empty;
-        _answerStatuses[CurrentQuestion.Id] = evaluation.Status;
+        _answers[question.Id] = userAnswer ?? string.Empty;
+        _answerStatuses[question.Id] = evaluation.Status;
         if (Mode == SessionMode.Practice)
         {
             _practiceSession!.Submit(userAnswer);
         }
         if (IsExam || evaluation.IsCorrect)
         {
-            _lockedQuestionIds.Add(CurrentQuestion.Id);
+            _lockedQuestionIds.Add(question.Id);
         }
 
         FeedbackStatus = evaluation.Status;
         FeedbackMessage = evaluation.IsCorrect
             ? "回答正确"
             : Mode == SessionMode.Practice || Mode == SessionMode.ErrorReview
-                ? $"回答错误，正确答案：{CurrentQuestion.Answer}。请重新作答"
-                : $"回答错误，正确答案：{CurrentQuestion.Answer}";
+                ? $"回答错误，正确答案：{question.Answer}。请重新作答"
+                : $"回答错误，正确答案：{question.Answer}";
         UpdateOptionFeedback(userAnswer, evaluation.Status);
         if (!evaluation.IsCorrect)
         {
             try
             {
                 await _errorBookRepository.AddAttemptAsync(
-                    CurrentQuestion,
+                    question,
                     userAnswer ?? string.Empty,
                     Mode.ToString().ToLowerInvariant(),
                     _clock.Now);
             }
             catch (Exception exception)
             {
-                _logger.Error(exception, "保存错题失败，题目 {QuestionId}", CurrentQuestion.Id);
-                FeedbackMessage += "；本次错题记录保存失败";
+                _logger.Error(exception, "保存错题失败，题目 {QuestionId}", question.Id);
+                if (CurrentQuestion.Id == question.Id)
+                {
+                    FeedbackMessage += "；本次错题记录保存失败";
+                }
             }
         }
         UpdateNavigatorStates();
@@ -388,7 +445,7 @@ public sealed partial class QuestionSessionViewModel : ObservableObject
 
         if (evaluation.IsCorrect)
         {
-            ScheduleAutoNext(CurrentQuestion.Id, CurrentIndex);
+            ScheduleAutoNext(question.Id, questionIndex);
         }
     }
 
@@ -412,34 +469,56 @@ public sealed partial class QuestionSessionViewModel : ObservableObject
 
     private void LoadCurrentQuestion()
     {
-        CurrentQuestion = Questions[CurrentIndex];
-        Options.Clear();
-        foreach (var option in CurrentQuestion.Options.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase))
+        _isLoadingQuestion = true;
+        try
         {
-            Options.Add(new QuestionOptionViewModel(option.Key, option.Value));
+            CurrentQuestion = Questions[CurrentIndex];
+            Options.Clear();
+            foreach (var option in CurrentQuestion.Options.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase))
+            {
+                Options.Add(new QuestionOptionViewModel(option.Key, option.Value));
+            }
+            _answers.TryGetValue(CurrentQuestion.Id, out var existingAnswer);
+            AnswerText = existingAnswer ?? string.Empty;
+            foreach (var option in Options)
+            {
+                option.IsSelected = IsOptionSelectedByAnswer(option.Key, existingAnswer);
+            }
+            IsReferenceVisible = false;
+            ReferenceAnswer = string.Empty;
+            if (_answerStatuses.TryGetValue(CurrentQuestion.Id, out var status))
+            {
+                FeedbackStatus = status;
+                FeedbackMessage = status == AnswerStatus.Correct ? "回答正确" : "回答错误";
+                UpdateOptionFeedback(existingAnswer, status);
+            }
+            else
+            {
+                FeedbackStatus = AnswerStatus.Unanswered;
+                FeedbackMessage = string.Empty;
+                UpdateOptionFeedback(null, AnswerStatus.Unanswered);
+            }
+            UpdateNavigatorStates();
+            RaiseQuestionProperties();
         }
-        _answers.TryGetValue(CurrentQuestion.Id, out var existingAnswer);
-        AnswerText = existingAnswer ?? string.Empty;
-        foreach (var option in Options)
+        finally
         {
-            option.IsSelected = AnswerEvaluator.Normalize(CurrentQuestion.Type, existingAnswer).Contains(option.Key, StringComparison.OrdinalIgnoreCase);
+            _isLoadingQuestion = false;
         }
-        IsReferenceVisible = false;
-        ReferenceAnswer = string.Empty;
-        if (_answerStatuses.TryGetValue(CurrentQuestion.Id, out var status))
+    }
+
+    private bool IsOptionSelectedByAnswer(string optionKey, string? answer)
+    {
+        if (CurrentQuestion.Type == QuestionType.TrueFalse)
         {
-            FeedbackStatus = status;
-            FeedbackMessage = status == AnswerStatus.Correct ? "回答正确" : "回答错误";
-            UpdateOptionFeedback(existingAnswer, status);
+            // 判断题的规范化结果是 TRUE/FALSE，不能直接用选项键 A/B 做 Contains 判断。
+            return string.Equals(
+                AnswerEvaluator.Normalize(QuestionType.TrueFalse, optionKey),
+                AnswerEvaluator.Normalize(QuestionType.TrueFalse, answer),
+                StringComparison.OrdinalIgnoreCase);
         }
-        else
-        {
-            FeedbackStatus = AnswerStatus.Unanswered;
-            FeedbackMessage = string.Empty;
-            UpdateOptionFeedback(null, AnswerStatus.Unanswered);
-        }
-        UpdateNavigatorStates();
-        RaiseQuestionProperties();
+        return AnswerEvaluator.Normalize(CurrentQuestion.Type, answer)
+            .Contains(optionKey, StringComparison.OrdinalIgnoreCase);
     }
 
     private void RaiseQuestionProperties()

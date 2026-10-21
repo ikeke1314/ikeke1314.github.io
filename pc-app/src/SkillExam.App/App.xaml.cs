@@ -23,8 +23,21 @@ public partial class App : Application
     {
         base.OnStartup(e);
         var paths = new AppDataPaths();
-        paths.EnsureCreated();
-        _logger = LoggingConfigurator.CreateLogger(paths);
+        try
+        {
+            paths.EnsureCreated();
+            _logger = LoggingConfigurator.CreateLogger(paths);
+        }
+        catch (Exception exception)
+        {
+            MessageBox.Show(
+                $"无法初始化本地数据目录或日志，用户数据未被删除。\n{exception.Message}",
+                "技能士考试刷题系统",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+            Shutdown(-1);
+            return;
+        }
         DispatcherUnhandledException += OnDispatcherUnhandledException;
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
 
@@ -62,7 +75,7 @@ public partial class App : Application
         }
         catch (Exception exception)
         {
-            _logger.Error(exception, "应用启动失败");
+            _logger?.Error(exception, "应用启动失败");
             MessageBox.Show(
                 "应用启动失败，用户数据未被删除。请查看 LocalAppData 下的日志。",
                 "技能士考试刷题系统",

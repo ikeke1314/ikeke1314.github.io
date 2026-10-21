@@ -1,4 +1,4 @@
-# 技能士考试刷题系统 V3.1
+# 技能士考试刷题系统 V3.1.2
 
 Windows 10/11 x64 桌面应用，使用 .NET 8、WPF、SQLite 和 MVVM 构建。发布物为自包含便携版，无需安装 .NET 运行时，也不生成安装包。
 
@@ -31,7 +31,7 @@ dotnet run --project .\src\SkillExam.App\SkillExam.App.csproj
 
 脚本会先清理旧发布物、运行测试，再生成：
 
-- `artifacts\portable\SkillExam-V3.1-win-x64`：可直接运行的便携目录。
-- `artifacts\SkillExam-V3.1-win-x64-portable.zip`：便携版压缩包。
+- `artifacts\portable\SkillExam-V3.1.2-win-x64`：可直接运行的便携目录。
+- `artifacts\SkillExam-V3.1.2-win-x64-portable.zip`：便携版压缩包。
 
 发布目录仅包含应用、默认题库、操作说明和开发文档，不生成安装程序。用户数据库、日志和备份默认保存在 `%LOCALAPPDATA%\PEGroup\SkillExam`，不会写入程序目录。

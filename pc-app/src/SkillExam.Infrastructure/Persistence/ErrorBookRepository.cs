@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using SkillExam.Core.Abstractions;
@@ -66,7 +67,7 @@ public sealed class ErrorBookRepository(SqliteDatabase database) : IErrorBookRep
                 question,
                 reader.GetInt32(9),
                 reader.IsDBNull(10) ? string.Empty : reader.GetString(10),
-                DateTimeOffset.Parse(reader.GetString(11))));
+                DateTimeOffset.Parse(reader.GetString(11), CultureInfo.InvariantCulture)));
         }
         return result;
     }

@@ -28,7 +28,9 @@ public sealed class LegacyDataMigratorTests : IDisposable
         await database.InitializeAsync();
         var migrator = new LegacyDataMigrator(database, paths, new FixedClock());
 
+        Assert.False(await migrator.IsMigratedAsync());
         var result = await migrator.MigrateAsync(legacy);
+        Assert.True(await migrator.IsMigratedAsync());
         Assert.Equal(2, result.ErrorAttemptsRead);
         Assert.Equal(2, result.ErrorAttemptsMigrated);
         Assert.Equal(1, result.PracticeSnapshotsMigrated);

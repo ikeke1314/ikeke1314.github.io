@@ -114,6 +114,18 @@ public sealed class LegacyDataMigrator(SqliteDatabase database, AppDataPaths pat
         return new LegacyMigrationResult(false, legacyErrors.Count, migratedAttempts, migratedProgress, backupDirectory, warnings);
     }
 
+    public async Task<bool> IsMigratedAsync(CancellationToken cancellationToken = default)
+    {
+        await using var connection = await database.OpenConnectionAsync(cancellationToken);
+        var command = connection.CreateCommand();
+        command.CommandText = "SELECT value FROM settings WHERE key = $key;";
+        command.Parameters.AddWithValue("$key", MigrationMarkerKey);
+        return string.Equals(
+            await command.ExecuteScalarAsync(cancellationToken) as string,
+            MigrationVersion,
+            StringComparison.Ordinal);
+    }
+
     private static IReadOnlyList<LegacyError> ReadErrors(string filePath, ICollection<string> warnings)
     {
         using var document = JsonDocument.Parse(File.ReadAllText(filePath, Encoding.UTF8));
